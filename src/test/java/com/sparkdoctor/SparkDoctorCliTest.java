@@ -8,22 +8,22 @@ import java.io.StringWriter;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
-final class SparkScopeCliTest {
+final class SparkDoctorCliTest {
     @Test
     void rootCommandPrintsUsageHint() {
         StringWriter output = new StringWriter();
-        CommandLine commandLine = new CommandLine(new SparkScopeCli(new PrintWriter(output, true)));
+        CommandLine commandLine = new CommandLine(new SparkDoctorCli(new PrintWriter(output, true)));
 
         int exitCode = commandLine.execute();
 
         assertEquals(0, exitCode);
-        assertTrue(output.toString().contains("sparkscope --help"));
+        assertTrue(output.toString().contains("sparkdoctor --help"));
     }
 
     @Test
     void helpListsAnalyzeSubcommand() {
         StringWriter output = new StringWriter();
-        CommandLine commandLine = new CommandLine(new SparkScopeCli());
+        CommandLine commandLine = new CommandLine(new SparkDoctorCli());
         commandLine.setOut(new PrintWriter(output, true));
 
         int exitCode = commandLine.execute("--help");
@@ -32,4 +32,3 @@ final class SparkScopeCliTest {
         assertTrue(output.toString().contains("analyze"));
     }
 }
-

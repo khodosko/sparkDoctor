@@ -6,31 +6,30 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 @Command(
-        name = "sparkscope",
+        name = "sparkdoctor",
         mixinStandardHelpOptions = true,
-        version = "sparkscope 0.1.0",
+        version = "sparkDoctor 0.1.0",
         description = "Analyze Spark event logs and generate local performance reports.",
         subcommands = {AnalyzeCommand.class})
-public final class SparkScopeCli implements Callable<Integer> {
+public final class SparkDoctorCli implements Callable<Integer> {
     private final PrintWriter out;
 
-    public SparkScopeCli() {
+    public SparkDoctorCli() {
         this(new PrintWriter(System.out, true));
     }
 
-    SparkScopeCli(PrintWriter out) {
+    SparkDoctorCli(PrintWriter out) {
         this.out = out;
     }
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new SparkScopeCli()).execute(args);
+        int exitCode = new CommandLine(new SparkDoctorCli()).execute(args);
         System.exit(exitCode);
     }
 
     @Override
     public Integer call() {
-        out.println("Run `sparkscope --help` for usage.");
+        out.println("Run `sparkdoctor --help` for usage.");
         return 0;
     }
 }
-

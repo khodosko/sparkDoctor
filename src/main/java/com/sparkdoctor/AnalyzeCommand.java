@@ -27,7 +27,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private Path eventLogPath;
 
     @Option(names = "--out", paramLabel = "<report-directory>", description = "Directory for generated report artifacts.")
-    private Path outputDirectory = Path.of("sparkscope-report");
+    private Path outputDirectory = Path.of("sparkdoctor-report");
 
     public AnalyzeCommand() {
         this(new SparkEventLogParser());
@@ -51,7 +51,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
             String durationDisplay = summary.durationMillis().isPresent()
                     ? Long.toString(summary.durationMillis().getAsLong())
                     : "unknown";
-            out.printf("SparkScope analyzed %s%n", eventLogPath);
+            out.printf("SparkDoctor analyzed %s%n", eventLogPath);
             out.printf("Application: %s%n", display(summary.appName()));
             out.printf("Application ID: %s%n", display(summary.appId()));
             out.printf("Duration: %s ms%n", durationDisplay);

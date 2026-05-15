@@ -26,7 +26,7 @@ final class AnalyzeCommandTest {
         int exitCode = commandLine.execute(eventLog.toString(), "--out", tempDir.resolve("report").toString());
 
         assertEquals(0, exitCode);
-        assertTrue(output.toString().contains("SparkScope analyzed"));
+        assertTrue(output.toString().contains("SparkDoctor analyzed"));
     }
 
     @Test

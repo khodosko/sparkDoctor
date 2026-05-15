@@ -13,7 +13,7 @@ java {
 }
 
 application {
-    mainClass = "com.sparkdoctor.SparkScopeCli"
+    mainClass = "com.sparkdoctor.SparkDoctorCli"
 }
 
 dependencies {
