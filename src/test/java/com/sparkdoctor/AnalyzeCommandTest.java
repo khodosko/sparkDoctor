@@ -26,7 +26,7 @@ final class AnalyzeCommandTest {
         int exitCode = commandLine.execute(eventLog.toString(), "--out", tempDir.resolve("report").toString());
 
         assertEquals(0, exitCode);
-        assertTrue(output.toString().contains("SparkScope will analyze"));
+        assertTrue(output.toString().contains("SparkScope analyzed"));
     }
 
     @Test
@@ -40,5 +40,22 @@ final class AnalyzeCommandTest {
 
         assertEquals(2, exitCode);
         assertTrue(errorOutput.toString().contains("Event log path does not exist"));
+    }
+
+    @Test
+    void analyzePrintsParsedApplicationSummary() {
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/minimal-eventlog.json",
+                "--out",
+                tempDir.resolve("report").toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: daily_customer_etl"));
+        assertTrue(output.toString().contains("Application ID: app-20260515120000-0001"));
+        assertTrue(output.toString().contains("Duration: 2832000 ms"));
     }
 }
