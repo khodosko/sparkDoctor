@@ -1,3 +1,9 @@
 guidance/
 developmentStandards.md
+statusTracker.md
 .DS_Store
+.gradle/
+.gradle-home/
+build/
+out/
+*.class

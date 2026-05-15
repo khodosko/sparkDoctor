@@ -1,0 +1,29 @@
+plugins {
+    id "application"
+    id "java"
+}
+
+group = "com.sparkdoctor"
+version = "0.1.0-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = "com.sparkdoctor.SparkScopeCli"
+}
+
+dependencies {
+    implementation "info.picocli:picocli:4.7.6"
+
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test") {
+    useJUnitPlatform()
+}
