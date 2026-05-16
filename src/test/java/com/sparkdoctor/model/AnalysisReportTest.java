@@ -33,7 +33,7 @@ final class AnalysisReportTest {
         ParsedEventLog parsedEventLog = new ParsedEventLog(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12)));
+                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)));
 
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
@@ -45,5 +45,9 @@ final class AnalysisReportTest {
         assertEquals(4, report.stages().get(0).id());
         assertEquals("read parquet", report.stages().get(0).name());
         assertEquals(12, report.stages().get(0).taskCount());
+        assertEquals(2, report.stages().get(0).completedTasks());
+        assertEquals(1000L, report.stages().get(0).minTaskDurationMillis());
+        assertEquals(3000L, report.stages().get(0).maxTaskDurationMillis());
+        assertEquals(2000L, report.stages().get(0).avgTaskDurationMillis());
     }
 }

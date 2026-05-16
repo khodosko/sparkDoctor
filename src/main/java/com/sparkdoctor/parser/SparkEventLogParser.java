@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
-import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -53,7 +52,7 @@ public final class SparkEventLogParser {
         Set<Integer> jobIds = new HashSet<>();
         Set<Integer> stageIds = new HashSet<>();
         Set<Long> taskIds = new HashSet<>();
-        Map<Integer, StageAnalysis> stages = new LinkedHashMap<>();
+        Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
 
         for (String eventLine : eventLines) {
             JsonNode event = objectMapper.readTree(eventLine);
@@ -75,12 +74,21 @@ public final class SparkEventLogParser {
                 Integer stageId = stageId(event, stageInfo);
                 if (stageId != null) {
                     stageIds.add(stageId);
-                    stages.putIfAbsent(stageId, stageAnalysis(stageId, stageInfo));
+                    stages.computeIfAbsent(stageId, StageAccumulator::new)
+                            .updateDetails(
+                                    textOrNull(stageInfo, "Stage Name"),
+                                    intOrNull(stageInfo, "Number of Tasks"));
                 }
             } else if (TASK_END.equals(eventType)) {
                 Long taskId = taskId(event);
                 if (taskId != null) {
                     taskIds.add(taskId);
+                }
+                Integer stageId = stageId(event, event.get("Stage Info"));
+                Long taskDurationMillis = taskDurationMillis(event);
+                if (stageId != null && taskDurationMillis != null) {
+                    stages.computeIfAbsent(stageId, StageAccumulator::new)
+                            .addTaskDuration(taskDurationMillis);
                 }
             }
         }
@@ -88,10 +96,16 @@ public final class SparkEventLogParser {
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
                 new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), 0),
-                List.copyOf(stages.values()));
+                stages.values().stream()
+                        .map(StageAccumulator::toStageAnalysis)
+                        .toList());
     }
 
     private String textOrNull(JsonNode node, String fieldName) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
         JsonNode value = node.get(fieldName);
         if (value == null || value.isNull()) {
             return null;
@@ -101,6 +115,10 @@ public final class SparkEventLogParser {
     }
 
     private Long longOrNull(JsonNode node, String fieldName) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
         JsonNode value = node.get(fieldName);
         if (value == null || value.isNull()) {
             return null;
@@ -110,6 +128,10 @@ public final class SparkEventLogParser {
     }
 
     private Integer intOrNull(JsonNode node, String fieldName) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
         JsonNode value = node.get(fieldName);
         if (value == null || value.isNull()) {
             return null;
@@ -131,17 +153,6 @@ public final class SparkEventLogParser {
         return intOrNull(stageInfo, "Stage ID");
     }
 
-    private StageAnalysis stageAnalysis(int stageId, JsonNode stageInfo) {
-        if (stageInfo == null || stageInfo.isNull()) {
-            return new StageAnalysis(stageId, null, null);
-        }
-
-        return new StageAnalysis(
-                stageId,
-                textOrNull(stageInfo, "Stage Name"),
-                intOrNull(stageInfo, "Number of Tasks"));
-    }
-
     private Long taskId(JsonNode event) {
         JsonNode taskInfo = event.get("Task Info");
         if (taskInfo == null || taskInfo.isNull()) {
@@ -149,5 +160,20 @@ public final class SparkEventLogParser {
         }
 
         return longOrNull(taskInfo, "Task ID");
+    }
+
+    private Long taskDurationMillis(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        if (taskInfo == null || taskInfo.isNull()) {
+            return null;
+        }
+
+        Long launchTimeMillis = longOrNull(taskInfo, "Launch Time");
+        Long finishTimeMillis = longOrNull(taskInfo, "Finish Time");
+        if (launchTimeMillis == null || finishTimeMillis == null) {
+            return null;
+        }
+
+        return finishTimeMillis - launchTimeMillis;
     }
 }

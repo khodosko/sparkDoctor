@@ -1,6 +1,7 @@
 package com.sparkdoctor.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
@@ -56,6 +57,28 @@ final class SparkEventLogParserTest {
         assertEquals(4, parsedEventLog.stages().get(0).id());
         assertEquals("read parquet", parsedEventLog.stages().get(0).name());
         assertEquals(12, parsedEventLog.stages().get(0).taskCount());
+        assertEquals(0, parsedEventLog.stages().get(0).completedTasks());
+        assertNull(parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertNull(parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertNull(parsedEventLog.stages().get(0).avgTaskDurationMillis());
+    }
+
+    @Test
+    void parsesTaskDurationAggregatesByStage() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Name\":\"read parquet\","
+                        + "\"Number of Tasks\":2}}",
+                "{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":4,"
+                        + "\"Task Info\":{\"Task ID\":100,\"Launch Time\":1000,\"Finish Time\":2500}}",
+                "{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":4,"
+                        + "\"Task Info\":{\"Task ID\":101,\"Launch Time\":2000,\"Finish Time\":6000}}"));
+
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(2, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1500L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(4000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(2750L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
     }
 
     @Test
@@ -82,8 +105,16 @@ final class SparkEventLogParserTest {
         assertEquals(0, parsedEventLog.stages().get(0).id());
         assertEquals("scan", parsedEventLog.stages().get(0).name());
         assertEquals(2, parsedEventLog.stages().get(0).taskCount());
+        assertEquals(2, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(2000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(3000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(2500L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
         assertEquals(1, parsedEventLog.stages().get(1).id());
         assertEquals("aggregate", parsedEventLog.stages().get(1).name());
         assertEquals(1, parsedEventLog.stages().get(1).taskCount());
+        assertEquals(1, parsedEventLog.stages().get(1).completedTasks());
+        assertEquals(3000L, parsedEventLog.stages().get(1).minTaskDurationMillis());
+        assertEquals(3000L, parsedEventLog.stages().get(1).maxTaskDurationMillis());
+        assertEquals(3000L, parsedEventLog.stages().get(1).avgTaskDurationMillis());
     }
 }

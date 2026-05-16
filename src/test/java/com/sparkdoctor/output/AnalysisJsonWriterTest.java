@@ -27,7 +27,7 @@ final class AnalysisJsonWriterTest {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12)));
+                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)));
         Path outputDirectory = tempDir.resolve("report");
 
         Path analysisPath = writer.write(outputDirectory, report);
@@ -46,6 +46,10 @@ final class AnalysisJsonWriterTest {
         assertEquals(4, json.path("stages").get(0).path("id").asInt());
         assertEquals("read parquet", json.path("stages").get(0).path("name").asText());
         assertEquals(12, json.path("stages").get(0).path("taskCount").asInt());
+        assertEquals(2, json.path("stages").get(0).path("completedTasks").asInt());
+        assertEquals(1000L, json.path("stages").get(0).path("minTaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(0).path("maxTaskDurationMillis").asLong());
+        assertEquals(2000L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
         assertTrue(json.path("bottlenecks").isArray());
         assertTrue(json.path("recommendations").isArray());
     }

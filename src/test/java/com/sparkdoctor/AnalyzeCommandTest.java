@@ -95,9 +95,17 @@ final class AnalyzeCommandTest {
         assertEquals(0, json.path("stages").get(0).path("id").asInt());
         assertEquals("scan", json.path("stages").get(0).path("name").asText());
         assertEquals(2, json.path("stages").get(0).path("taskCount").asInt());
+        assertEquals(2, json.path("stages").get(0).path("completedTasks").asInt());
+        assertEquals(2000L, json.path("stages").get(0).path("minTaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(0).path("maxTaskDurationMillis").asLong());
+        assertEquals(2500L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
         assertEquals(1, json.path("stages").get(1).path("id").asInt());
         assertEquals("aggregate", json.path("stages").get(1).path("name").asText());
         assertEquals(1, json.path("stages").get(1).path("taskCount").asInt());
+        assertEquals(1, json.path("stages").get(1).path("completedTasks").asInt());
+        assertEquals(3000L, json.path("stages").get(1).path("minTaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(1).path("maxTaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(1).path("avgTaskDurationMillis").asLong());
     }
 
     @Test
