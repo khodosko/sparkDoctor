@@ -146,6 +146,30 @@ final class SparkEventLogParserTest {
         assertEquals(0, parsedEventLog.bottlenecks().size());
     }
 
+    @Test
+    void parsesTaskDurationSkewFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/skewed-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-skewed-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("skewed_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(10, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(4, parsedEventLog.stages().get(0).id());
+        assertEquals("skewed shuffle", parsedEventLog.stages().get(0).name());
+        assertEquals(10, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(9000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(1800L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("task_duration_skew", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals(5.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+    }
+
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {
         return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"

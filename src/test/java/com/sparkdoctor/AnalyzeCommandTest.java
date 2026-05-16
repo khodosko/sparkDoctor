@@ -110,6 +110,31 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesTaskDurationSkewBottleneckForSkewedFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("skewed-report");
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/skewed-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("skewed_customer_etl", json.path("application").path("name").asText());
+        assertEquals(10, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(10, json.path("bottlenecks").get(0).path("evidence").path("completedTasks").asInt());
+        assertEquals(1800L, json.path("bottlenecks").get(0).path("evidence").path("avgTaskDurationMillis").asLong());
+        assertEquals(9000L, json.path("bottlenecks").get(0).path("evidence").path("maxTaskDurationMillis").asLong());
+        assertEquals(5.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
+    }
+
+    @Test
     void analyzeReturnsErrorWhenAnalysisJsonCannotBeWritten() throws Exception {
         Path outputPathThatIsAFile = tempDir.resolve("report");
         Files.writeString(outputPathThatIsAFile, "not a directory");

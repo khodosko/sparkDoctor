@@ -1,0 +1,15 @@
+{"Event":"SparkListenerApplicationStart","App Name":"skewed_customer_etl","App ID":"app-skewed-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":0,"Submission Time":1778846401000,"Stage IDs":[4]}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":4,"Stage Name":"skewed shuffle","Number of Tasks":10}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":100,"Index":0,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":101,"Index":1,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":102,"Index":2,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":103,"Index":3,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":104,"Index":4,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":105,"Index":5,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":106,"Index":6,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":107,"Index":7,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":108,"Index":8,"Launch Time":0,"Finish Time":1000}}
+{"Event":"SparkListenerTaskEnd","Stage ID":4,"Task Type":"ResultTask","Task Info":{"Task ID":109,"Index":9,"Launch Time":0,"Finish Time":9000}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}
+
