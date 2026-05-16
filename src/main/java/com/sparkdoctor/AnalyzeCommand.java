@@ -1,6 +1,8 @@
 package com.sparkdoctor;
 
+import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.ApplicationSummary;
+import com.sparkdoctor.output.AnalysisJsonWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,6 +21,7 @@ import picocli.CommandLine.Spec;
         mixinStandardHelpOptions = true)
 public final class AnalyzeCommand implements Callable<Integer> {
     private final SparkEventLogParser parser;
+    private final AnalysisJsonWriter analysisJsonWriter;
 
     @Spec
     private CommandSpec spec;
@@ -30,11 +33,12 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private Path outputDirectory = Path.of("sparkdoctor-report");
 
     public AnalyzeCommand() {
-        this(new SparkEventLogParser());
+        this(new SparkEventLogParser(), new AnalysisJsonWriter());
     }
 
-    AnalyzeCommand(SparkEventLogParser parser) {
+    AnalyzeCommand(SparkEventLogParser parser, AnalysisJsonWriter analysisJsonWriter) {
         this.parser = parser;
+        this.analysisJsonWriter = analysisJsonWriter;
     }
 
     @Override
@@ -45,23 +49,35 @@ public final class AnalyzeCommand implements Callable<Integer> {
             return 2;
         }
 
+        ApplicationSummary summary;
         try {
-            ApplicationSummary summary = parser.parseApplicationSummary(eventLogPath);
-            PrintWriter out = spec.commandLine().getOut();
-            String durationDisplay = summary.durationMillis().isPresent()
-                    ? Long.toString(summary.durationMillis().getAsLong())
-                    : "unknown";
-            out.printf("SparkDoctor analyzed %s%n", eventLogPath);
-            out.printf("Application: %s%n", display(summary.appName()));
-            out.printf("Application ID: %s%n", display(summary.appId()));
-            out.printf("Duration: %s ms%n", durationDisplay);
-            out.printf("Output directory: %s%n", outputDirectory);
-            return 0;
+            summary = parser.parseApplicationSummary(eventLogPath);
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
             err.printf("Failed to read Spark event log: %s%n", exception.getMessage());
             return 1;
         }
+
+        Path analysisPath;
+        try {
+            analysisPath = analysisJsonWriter.write(outputDirectory, AnalysisReport.from(summary));
+        } catch (IOException exception) {
+            PrintWriter err = spec.commandLine().getErr();
+            err.printf("Failed to write analysis output: %s%n", exception.getMessage());
+            return 1;
+        }
+
+        PrintWriter out = spec.commandLine().getOut();
+        String durationDisplay = summary.durationMillis().isPresent()
+                ? Long.toString(summary.durationMillis().getAsLong())
+                : "unknown";
+        out.printf("SparkDoctor analyzed %s%n", eventLogPath);
+        out.printf("Application: %s%n", display(summary.appName()));
+        out.printf("Application ID: %s%n", display(summary.appId()));
+        out.printf("Duration: %s ms%n", durationDisplay);
+        out.printf("Output directory: %s%n", outputDirectory);
+        out.printf("Analysis JSON: %s%n", analysisPath);
+        return 0;
     }
 
     private String display(String value) {

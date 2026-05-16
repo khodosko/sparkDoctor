@@ -6,4 +6,5 @@ statusTracker.md
 .gradle-home/
 build/
 out/
+sparkdoctor-report/
 *.class
