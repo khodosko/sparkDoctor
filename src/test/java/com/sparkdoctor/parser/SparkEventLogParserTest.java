@@ -41,6 +41,21 @@ final class SparkEventLogParserTest {
         assertEquals(2, parsedEventLog.analysisSummary().stages());
         assertEquals(2, parsedEventLog.analysisSummary().tasks());
         assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(11, parsedEventLog.stages().get(0).id());
+        assertEquals(12, parsedEventLog.stages().get(1).id());
+    }
+
+    @Test
+    void parsesStageDetailsFromStageSubmittedEvents() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Name\":\"read parquet\","
+                        + "\"Number of Tasks\":12}}"));
+
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(4, parsedEventLog.stages().get(0).id());
+        assertEquals("read parquet", parsedEventLog.stages().get(0).name());
+        assertEquals(12, parsedEventLog.stages().get(0).taskCount());
     }
 
     @Test
@@ -63,5 +78,12 @@ final class SparkEventLogParserTest {
         assertEquals(1, parsedEventLog.analysisSummary().jobs());
         assertEquals(2, parsedEventLog.analysisSummary().stages());
         assertEquals(3, parsedEventLog.analysisSummary().tasks());
+        assertEquals(2, parsedEventLog.stages().size());
+        assertEquals(0, parsedEventLog.stages().get(0).id());
+        assertEquals("scan", parsedEventLog.stages().get(0).name());
+        assertEquals(2, parsedEventLog.stages().get(0).taskCount());
+        assertEquals(1, parsedEventLog.stages().get(1).id());
+        assertEquals("aggregate", parsedEventLog.stages().get(1).name());
+        assertEquals(1, parsedEventLog.stages().get(1).taskCount());
     }
 }

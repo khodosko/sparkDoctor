@@ -3,6 +3,7 @@ package com.sparkdoctor.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 final class AnalysisReportTest {
@@ -22,6 +23,7 @@ final class AnalysisReportTest {
         assertEquals(0, report.summary().stages());
         assertEquals(0, report.summary().tasks());
         assertEquals(0, report.summary().issuesDetected());
+        assertTrue(report.stages().isEmpty());
         assertTrue(report.bottlenecks().isEmpty());
         assertTrue(report.recommendations().isEmpty());
     }
@@ -30,7 +32,8 @@ final class AnalysisReportTest {
     void buildsInitialAnalysisReportFromParsedEventLog() {
         ParsedEventLog parsedEventLog = new ParsedEventLog(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
-                new AnalysisSummary(1, 2, 3, 0));
+                new AnalysisSummary(1, 2, 3, 0),
+                List.of(new StageAnalysis(4, "read parquet", 12)));
 
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
@@ -38,5 +41,9 @@ final class AnalysisReportTest {
         assertEquals(2, report.summary().stages());
         assertEquals(3, report.summary().tasks());
         assertEquals(0, report.summary().issuesDetected());
+        assertEquals(1, report.stages().size());
+        assertEquals(4, report.stages().get(0).id());
+        assertEquals("read parquet", report.stages().get(0).name());
+        assertEquals(12, report.stages().get(0).taskCount());
     }
 }

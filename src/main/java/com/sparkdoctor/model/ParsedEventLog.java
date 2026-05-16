@@ -1,4 +1,9 @@
 package com.sparkdoctor.model;
 
-public record ParsedEventLog(ApplicationSummary applicationSummary, AnalysisSummary analysisSummary) {}
+import java.util.List;
+
+public record ParsedEventLog(
+        ApplicationSummary applicationSummary,
+        AnalysisSummary analysisSummary,
+        List<StageAnalysis> stages) {}
 

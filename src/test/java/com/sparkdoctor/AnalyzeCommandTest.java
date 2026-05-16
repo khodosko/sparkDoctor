@@ -91,6 +91,13 @@ final class AnalyzeCommandTest {
         assertEquals(2, json.path("summary").path("stages").asInt());
         assertEquals(3, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(2, json.path("stages").size());
+        assertEquals(0, json.path("stages").get(0).path("id").asInt());
+        assertEquals("scan", json.path("stages").get(0).path("name").asText());
+        assertEquals(2, json.path("stages").get(0).path("taskCount").asInt());
+        assertEquals(1, json.path("stages").get(1).path("id").asInt());
+        assertEquals("aggregate", json.path("stages").get(1).path("name").asText());
+        assertEquals(1, json.path("stages").get(1).path("taskCount").asInt());
     }
 
     @Test

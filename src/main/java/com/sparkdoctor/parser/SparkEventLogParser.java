@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
+import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class SparkEventLogParser {
@@ -50,6 +53,7 @@ public final class SparkEventLogParser {
         Set<Integer> jobIds = new HashSet<>();
         Set<Integer> stageIds = new HashSet<>();
         Set<Long> taskIds = new HashSet<>();
+        Map<Integer, StageAnalysis> stages = new LinkedHashMap<>();
 
         for (String eventLine : eventLines) {
             JsonNode event = objectMapper.readTree(eventLine);
@@ -67,9 +71,11 @@ public final class SparkEventLogParser {
                     jobIds.add(jobId);
                 }
             } else if (STAGE_SUBMITTED.equals(eventType)) {
-                Integer stageId = stageId(event);
+                JsonNode stageInfo = event.get("Stage Info");
+                Integer stageId = stageId(event, stageInfo);
                 if (stageId != null) {
                     stageIds.add(stageId);
+                    stages.putIfAbsent(stageId, stageAnalysis(stageId, stageInfo));
                 }
             } else if (TASK_END.equals(eventType)) {
                 Long taskId = taskId(event);
@@ -81,7 +87,8 @@ public final class SparkEventLogParser {
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
-                new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), 0));
+                new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), 0),
+                List.copyOf(stages.values()));
     }
 
     private String textOrNull(JsonNode node, String fieldName) {
@@ -111,18 +118,28 @@ public final class SparkEventLogParser {
         return value.asInt();
     }
 
-    private Integer stageId(JsonNode event) {
+    private Integer stageId(JsonNode event, JsonNode stageInfo) {
         Integer directStageId = intOrNull(event, "Stage ID");
         if (directStageId != null) {
             return directStageId;
         }
 
-        JsonNode stageInfo = event.get("Stage Info");
         if (stageInfo == null || stageInfo.isNull()) {
             return null;
         }
 
         return intOrNull(stageInfo, "Stage ID");
+    }
+
+    private StageAnalysis stageAnalysis(int stageId, JsonNode stageInfo) {
+        if (stageInfo == null || stageInfo.isNull()) {
+            return new StageAnalysis(stageId, null, null);
+        }
+
+        return new StageAnalysis(
+                stageId,
+                textOrNull(stageInfo, "Stage Name"),
+                intOrNull(stageInfo, "Number of Tasks"));
     }
 
     private Long taskId(JsonNode event) {
