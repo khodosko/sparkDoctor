@@ -33,14 +33,20 @@ final class AnalysisReportTest {
         ParsedEventLog parsedEventLog = new ParsedEventLog(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)));
+                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)),
+                List.of(new Bottleneck(
+                        "task_duration_skew",
+                        "medium",
+                        4,
+                        "Stage 4 has task duration skew.",
+                        java.util.Map.of("skewRatio", 3.0))));
 
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
         assertEquals(1, report.summary().jobs());
         assertEquals(2, report.summary().stages());
         assertEquals(3, report.summary().tasks());
-        assertEquals(0, report.summary().issuesDetected());
+        assertEquals(1, report.summary().issuesDetected());
         assertEquals(1, report.stages().size());
         assertEquals(4, report.stages().get(0).id());
         assertEquals("read parquet", report.stages().get(0).name());
@@ -49,5 +55,7 @@ final class AnalysisReportTest {
         assertEquals(1000L, report.stages().get(0).minTaskDurationMillis());
         assertEquals(3000L, report.stages().get(0).maxTaskDurationMillis());
         assertEquals(2000L, report.stages().get(0).avgTaskDurationMillis());
+        assertEquals(1, report.bottlenecks().size());
+        assertEquals("task_duration_skew", report.bottlenecks().get(0).type());
     }
 }

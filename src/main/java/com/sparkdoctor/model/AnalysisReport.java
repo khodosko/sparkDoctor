@@ -6,24 +6,36 @@ public record AnalysisReport(
         ApplicationAnalysis application,
         AnalysisSummary summary,
         List<StageAnalysis> stages,
-        List<Object> bottlenecks,
+        List<Bottleneck> bottlenecks,
         List<Object> recommendations) {
     public static AnalysisReport from(ParsedEventLog parsedEventLog) {
-        return from(parsedEventLog.applicationSummary(), parsedEventLog.analysisSummary(), parsedEventLog.stages());
+        return from(
+                parsedEventLog.applicationSummary(),
+                parsedEventLog.analysisSummary(),
+                parsedEventLog.stages(),
+                parsedEventLog.bottlenecks());
     }
 
     public static AnalysisReport from(ApplicationSummary applicationSummary) {
-        return from(applicationSummary, new AnalysisSummary(0, 0, 0, 0), List.of());
+        return from(applicationSummary, new AnalysisSummary(0, 0, 0, 0), List.of(), List.of());
     }
 
     public static AnalysisReport from(ApplicationSummary applicationSummary, AnalysisSummary analysisSummary) {
-        return from(applicationSummary, analysisSummary, List.of());
+        return from(applicationSummary, analysisSummary, List.of(), List.of());
     }
 
     public static AnalysisReport from(
             ApplicationSummary applicationSummary,
             AnalysisSummary analysisSummary,
             List<StageAnalysis> stages) {
+        return from(applicationSummary, analysisSummary, stages, List.of());
+    }
+
+    public static AnalysisReport from(
+            ApplicationSummary applicationSummary,
+            AnalysisSummary analysisSummary,
+            List<StageAnalysis> stages,
+            List<Bottleneck> bottlenecks) {
         ApplicationAnalysis application = new ApplicationAnalysis(
                 applicationSummary.appId(),
                 applicationSummary.appName(),
@@ -35,9 +47,13 @@ public record AnalysisReport(
 
         return new AnalysisReport(
                 application,
-                analysisSummary,
+                new AnalysisSummary(
+                        analysisSummary.jobs(),
+                        analysisSummary.stages(),
+                        analysisSummary.tasks(),
+                        bottlenecks.size()),
                 stages,
-                List.of(),
+                bottlenecks,
                 List.of());
     }
 }

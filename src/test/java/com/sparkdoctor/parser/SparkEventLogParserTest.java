@@ -82,6 +82,33 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void detectsTaskDurationSkewFromParsedTaskEvents() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Name\":\"skewed shuffle\","
+                        + "\"Number of Tasks\":10}}",
+                taskEnd(4, 100, 0, 1000),
+                taskEnd(4, 101, 0, 1000),
+                taskEnd(4, 102, 0, 1000),
+                taskEnd(4, 103, 0, 1000),
+                taskEnd(4, 104, 0, 1000),
+                taskEnd(4, 105, 0, 1000),
+                taskEnd(4, 106, 0, 1000),
+                taskEnd(4, 107, 0, 1000),
+                taskEnd(4, 108, 0, 1000),
+                taskEnd(4, 109, 0, 9000)));
+
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals("task_duration_skew", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals(4, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(10, parsedEventLog.bottlenecks().get(0).evidence().get("completedTasks"));
+        assertEquals(1800L, parsedEventLog.bottlenecks().get(0).evidence().get("avgTaskDurationMillis"));
+        assertEquals(9000L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskDurationMillis"));
+        assertEquals(5.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+    }
+
+    @Test
     void parsesApplicationSummaryFromFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/minimal-eventlog.json");
 
@@ -116,5 +143,12 @@ final class SparkEventLogParserTest {
         assertEquals(3000L, parsedEventLog.stages().get(1).minTaskDurationMillis());
         assertEquals(3000L, parsedEventLog.stages().get(1).maxTaskDurationMillis());
         assertEquals(3000L, parsedEventLog.stages().get(1).avgTaskDurationMillis());
+        assertEquals(0, parsedEventLog.bottlenecks().size());
+    }
+
+    private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"
+        ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis);
     }
 }

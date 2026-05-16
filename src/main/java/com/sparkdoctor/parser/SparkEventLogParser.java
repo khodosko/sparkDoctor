@@ -2,9 +2,12 @@ package com.sparkdoctor.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
+import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.ParsedEventLog;
+import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -22,14 +25,19 @@ public final class SparkEventLogParser {
 
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
+    private final TaskDurationSkewDetector taskDurationSkewDetector;
 
     public SparkEventLogParser() {
-        this(new EventLogReader(), new ObjectMapper());
+        this(new EventLogReader(), new ObjectMapper(), new TaskDurationSkewDetector());
     }
 
-    SparkEventLogParser(EventLogReader eventLogReader, ObjectMapper objectMapper) {
+    SparkEventLogParser(
+            EventLogReader eventLogReader,
+            ObjectMapper objectMapper,
+            TaskDurationSkewDetector taskDurationSkewDetector) {
         this.eventLogReader = eventLogReader;
         this.objectMapper = objectMapper;
+        this.taskDurationSkewDetector = taskDurationSkewDetector;
     }
 
     public ApplicationSummary parseApplicationSummary(Path eventLogPath) throws IOException {
@@ -93,12 +101,16 @@ public final class SparkEventLogParser {
             }
         }
 
+        List<StageAnalysis> stageAnalyses = stages.values().stream()
+                .map(StageAccumulator::toStageAnalysis)
+                .toList();
+        List<Bottleneck> bottlenecks = taskDurationSkewDetector.detect(stageAnalyses);
+
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
-                new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), 0),
-                stages.values().stream()
-                        .map(StageAccumulator::toStageAnalysis)
-                        .toList());
+                new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), bottlenecks.size()),
+                stageAnalyses,
+                bottlenecks);
     }
 
     private String textOrNull(JsonNode node, String fieldName) {

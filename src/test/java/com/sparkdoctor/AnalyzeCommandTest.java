@@ -106,6 +106,7 @@ final class AnalyzeCommandTest {
         assertEquals(3000L, json.path("stages").get(1).path("minTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(1).path("maxTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(1).path("avgTaskDurationMillis").asLong());
+        assertEquals(0, json.path("bottlenecks").size());
     }
 
     @Test
