@@ -33,7 +33,7 @@ final class AnalysisReportTest {
         ParsedEventLog parsedEventLog = new ParsedEventLog(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)),
+                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L, 7000L, 5000L)),
                 List.of(new Bottleneck(
                         "task_duration_skew",
                         "medium",
@@ -62,6 +62,8 @@ final class AnalysisReportTest {
         assertEquals(1000L, report.stages().get(0).minTaskDurationMillis());
         assertEquals(3000L, report.stages().get(0).maxTaskDurationMillis());
         assertEquals(2000L, report.stages().get(0).avgTaskDurationMillis());
+        assertEquals(7000L, report.stages().get(0).shuffleReadBytes());
+        assertEquals(5000L, report.stages().get(0).maxTaskShuffleReadBytes());
         assertEquals(1, report.bottlenecks().size());
         assertEquals("task_duration_skew", report.bottlenecks().get(0).type());
         assertEquals(1, report.recommendations().size());

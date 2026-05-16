@@ -13,7 +13,7 @@ final class TaskDurationSkewDetectorTest {
 
     @Test
     void detectsTaskDurationSkewWhenMaxIsAtLeastThreeTimesAverage() {
-        StageAnalysis stage = new StageAnalysis(7, "shuffle", 10, 10, 1000L, 9000L, 3000L);
+        StageAnalysis stage = new StageAnalysis(7, "shuffle", 10, 10, 1000L, 9000L, 3000L, 0L, null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
@@ -30,7 +30,7 @@ final class TaskDurationSkewDetectorTest {
 
     @Test
     void ignoresSmallStagesToAvoidNoisySkewFindings() {
-        StageAnalysis stage = new StageAnalysis(7, "tiny shuffle", 2, 2, 1000L, 9000L, 3000L);
+        StageAnalysis stage = new StageAnalysis(7, "tiny shuffle", 2, 2, 1000L, 9000L, 3000L, 0L, null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
@@ -39,11 +39,10 @@ final class TaskDurationSkewDetectorTest {
 
     @Test
     void ignoresStagesBelowSkewThreshold() {
-        StageAnalysis stage = new StageAnalysis(7, "balanced shuffle", 10, 10, 1000L, 5000L, 3000L);
+        StageAnalysis stage = new StageAnalysis(7, "balanced shuffle", 10, 10, 1000L, 5000L, 3000L, 0L, null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
         assertTrue(bottlenecks.isEmpty());
     }
 }
-

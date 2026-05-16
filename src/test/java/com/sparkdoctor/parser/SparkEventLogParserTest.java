@@ -61,6 +61,8 @@ final class SparkEventLogParserTest {
         assertNull(parsedEventLog.stages().get(0).minTaskDurationMillis());
         assertNull(parsedEventLog.stages().get(0).maxTaskDurationMillis());
         assertNull(parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(0L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertNull(parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
     }
 
     @Test
@@ -79,6 +81,20 @@ final class SparkEventLogParserTest {
         assertEquals(1500L, parsedEventLog.stages().get(0).minTaskDurationMillis());
         assertEquals(4000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
         assertEquals(2750L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+    }
+
+    @Test
+    void parsesShuffleReadBytesByStage() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Name\":\"shuffle\","
+                        + "\"Number of Tasks\":2}}",
+                taskEndWithShuffleRead(4, 100, 0, 1000, 1000, 2000),
+                taskEndWithShuffleRead(4, 101, 0, 1000, 4000, 1000)));
+
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(8000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
     }
 
     @Test
@@ -138,6 +154,8 @@ final class SparkEventLogParserTest {
         assertEquals(2000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
         assertEquals(3000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
         assertEquals(2500L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(8000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
         assertEquals(1, parsedEventLog.stages().get(1).id());
         assertEquals("aggregate", parsedEventLog.stages().get(1).name());
         assertEquals(1, parsedEventLog.stages().get(1).taskCount());
@@ -145,6 +163,8 @@ final class SparkEventLogParserTest {
         assertEquals(3000L, parsedEventLog.stages().get(1).minTaskDurationMillis());
         assertEquals(3000L, parsedEventLog.stages().get(1).maxTaskDurationMillis());
         assertEquals(3000L, parsedEventLog.stages().get(1).avgTaskDurationMillis());
+        assertEquals(8000L, parsedEventLog.stages().get(1).shuffleReadBytes());
+        assertEquals(8000L, parsedEventLog.stages().get(1).maxTaskShuffleReadBytes());
         assertEquals(0, parsedEventLog.bottlenecks().size());
     }
 
@@ -170,6 +190,8 @@ final class SparkEventLogParserTest {
         assertEquals(1, parsedEventLog.bottlenecks().size());
         assertEquals("task_duration_skew", parsedEventLog.bottlenecks().get(0).type());
         assertEquals(5.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+        assertEquals(19000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(10000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("investigate-task-duration-skew", parsedEventLog.recommendations().get(0).id());
     }
@@ -178,5 +200,19 @@ final class SparkEventLogParserTest {
         return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"
         ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis);
+    }
+
+    private String taskEndWithShuffleRead(
+            int stageId,
+            long taskId,
+            long launchTimeMillis,
+            long finishTimeMillis,
+            long localBytesRead,
+            long remoteBytesRead) {
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d},"
+                + "\"Task Metrics\":{\"Shuffle Read Metrics\":{"
+                + "\"Local Bytes Read\":%d,\"Remote Bytes Read\":%d}}}"
+        ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis, localBytesRead, remoteBytesRead);
     }
 }

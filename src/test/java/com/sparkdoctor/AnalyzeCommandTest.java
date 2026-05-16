@@ -99,6 +99,8 @@ final class AnalyzeCommandTest {
         assertEquals(2000L, json.path("stages").get(0).path("minTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(0).path("maxTaskDurationMillis").asLong());
         assertEquals(2500L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
+        assertEquals(8000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
         assertEquals(1, json.path("stages").get(1).path("id").asInt());
         assertEquals("aggregate", json.path("stages").get(1).path("name").asText());
         assertEquals(1, json.path("stages").get(1).path("taskCount").asInt());
@@ -106,6 +108,8 @@ final class AnalyzeCommandTest {
         assertEquals(3000L, json.path("stages").get(1).path("minTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(1).path("maxTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(1).path("avgTaskDurationMillis").asLong());
+        assertEquals(8000L, json.path("stages").get(1).path("shuffleReadBytes").asLong());
+        assertEquals(8000L, json.path("stages").get(1).path("maxTaskShuffleReadBytes").asLong());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
     }
@@ -133,6 +137,8 @@ final class AnalyzeCommandTest {
         assertEquals(1800L, json.path("bottlenecks").get(0).path("evidence").path("avgTaskDurationMillis").asLong());
         assertEquals(9000L, json.path("bottlenecks").get(0).path("evidence").path("maxTaskDurationMillis").asLong());
         assertEquals(5.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
+        assertEquals(19000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
+        assertEquals(10000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
         assertEquals(1, json.path("recommendations").size());
         assertEquals("investigate-task-duration-skew", json.path("recommendations").get(0).path("id").asText());
         assertEquals("task_duration_skew", json.path("recommendations").get(0).path("relatedBottleneckType").asText());

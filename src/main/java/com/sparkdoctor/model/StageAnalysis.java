@@ -7,4 +7,6 @@ public record StageAnalysis(
         int completedTasks,
         Long minTaskDurationMillis,
         Long maxTaskDurationMillis,
-        Long avgTaskDurationMillis) {}
+        Long avgTaskDurationMillis,
+        long shuffleReadBytes,
+        Long maxTaskShuffleReadBytes) {}

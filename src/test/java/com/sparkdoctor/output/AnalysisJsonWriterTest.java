@@ -30,7 +30,7 @@ final class AnalysisJsonWriterTest {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L)),
+                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L, 7000L, 5000L)),
                 List.of(new Bottleneck(
                         "task_duration_skew",
                         "medium",
@@ -66,6 +66,8 @@ final class AnalysisJsonWriterTest {
         assertEquals(1000L, json.path("stages").get(0).path("minTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(0).path("maxTaskDurationMillis").asLong());
         assertEquals(2000L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
+        assertEquals(7000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());

@@ -102,6 +102,11 @@ public final class SparkEventLogParser {
                     stages.computeIfAbsent(stageId, StageAccumulator::new)
                             .addTaskDuration(taskDurationMillis);
                 }
+                Long shuffleReadBytes = shuffleReadBytes(event);
+                if (stageId != null && shuffleReadBytes != null) {
+                    stages.computeIfAbsent(stageId, StageAccumulator::new)
+                            .addShuffleReadBytes(shuffleReadBytes);
+                }
             }
         }
 
@@ -192,5 +197,25 @@ public final class SparkEventLogParser {
         }
 
         return finishTimeMillis - launchTimeMillis;
+    }
+
+    private Long shuffleReadBytes(JsonNode event) {
+        JsonNode taskMetrics = event.get("Task Metrics");
+        if (taskMetrics == null || taskMetrics.isNull()) {
+            return null;
+        }
+
+        JsonNode shuffleReadMetrics = taskMetrics.get("Shuffle Read Metrics");
+        if (shuffleReadMetrics == null || shuffleReadMetrics.isNull()) {
+            return null;
+        }
+
+        Long localBytesRead = longOrNull(shuffleReadMetrics, "Local Bytes Read");
+        Long remoteBytesRead = longOrNull(shuffleReadMetrics, "Remote Bytes Read");
+        return valueOrZero(localBytesRead) + valueOrZero(remoteBytesRead);
+    }
+
+    private long valueOrZero(Long value) {
+        return value == null ? 0L : value;
     }
 }

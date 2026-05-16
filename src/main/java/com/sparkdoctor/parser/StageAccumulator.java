@@ -10,6 +10,8 @@ final class StageAccumulator {
     private long totalTaskDurationMillis;
     private Long minTaskDurationMillis;
     private Long maxTaskDurationMillis;
+    private long shuffleReadBytes;
+    private Long maxTaskShuffleReadBytes;
 
     StageAccumulator(int id) {
         this.id = id;
@@ -31,6 +33,13 @@ final class StageAccumulator {
                 : Math.max(maxTaskDurationMillis, durationMillis);
     }
 
+    void addShuffleReadBytes(long taskShuffleReadBytes) {
+        shuffleReadBytes += taskShuffleReadBytes;
+        maxTaskShuffleReadBytes = maxTaskShuffleReadBytes == null
+                ? taskShuffleReadBytes
+                : Math.max(maxTaskShuffleReadBytes, taskShuffleReadBytes);
+    }
+
     StageAnalysis toStageAnalysis() {
         Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
         return new StageAnalysis(
@@ -40,7 +49,8 @@ final class StageAccumulator {
                 completedTasks,
                 minTaskDurationMillis,
                 maxTaskDurationMillis,
-                avgTaskDurationMillis);
+                avgTaskDurationMillis,
+                shuffleReadBytes,
+                maxTaskShuffleReadBytes);
     }
 }
-
