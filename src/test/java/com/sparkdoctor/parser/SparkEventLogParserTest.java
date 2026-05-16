@@ -3,6 +3,7 @@ package com.sparkdoctor.parser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.sparkdoctor.model.ApplicationSummary;
+import com.sparkdoctor.model.ParsedEventLog;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,24 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesJobStageAndTaskCountsFromLines() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7}",
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7}",
+                "{\"Event\":\"SparkListenerStageSubmitted\",\"Stage Info\":{\"Stage ID\":11}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\",\"Stage Info\":{\"Stage ID\":12}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\",\"Stage Info\":{\"Stage ID\":12}}",
+                "{\"Event\":\"SparkListenerTaskEnd\",\"Task Info\":{\"Task ID\":1001}}",
+                "{\"Event\":\"SparkListenerTaskEnd\",\"Task Info\":{\"Task ID\":1002}}",
+                "{\"Event\":\"SparkListenerTaskEnd\",\"Task Info\":{\"Task ID\":1002}}"));
+
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(2, parsedEventLog.analysisSummary().stages());
+        assertEquals(2, parsedEventLog.analysisSummary().tasks());
+        assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
+    }
+
+    @Test
     void parsesApplicationSummaryFromFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/minimal-eventlog.json");
 
@@ -34,5 +53,15 @@ final class SparkEventLogParserTest {
         assertEquals("daily_customer_etl", summary.appName());
         assertEquals(2832000L, summary.durationMillis().orElseThrow());
     }
-}
 
+    @Test
+    void parsesSummaryCountsFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/minimal-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(2, parsedEventLog.analysisSummary().stages());
+        assertEquals(3, parsedEventLog.analysisSummary().tasks());
+    }
+}

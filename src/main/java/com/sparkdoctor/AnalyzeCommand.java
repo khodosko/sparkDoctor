@@ -2,6 +2,7 @@ package com.sparkdoctor;
 
 import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.ApplicationSummary;
+import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.output.AnalysisJsonWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
 import java.io.IOException;
@@ -49,18 +50,19 @@ public final class AnalyzeCommand implements Callable<Integer> {
             return 2;
         }
 
-        ApplicationSummary summary;
+        ParsedEventLog parsedEventLog;
         try {
-            summary = parser.parseApplicationSummary(eventLogPath);
+            parsedEventLog = parser.parse(eventLogPath);
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
             err.printf("Failed to read Spark event log: %s%n", exception.getMessage());
             return 1;
         }
 
+        ApplicationSummary summary = parsedEventLog.applicationSummary();
         Path analysisPath;
         try {
-            analysisPath = analysisJsonWriter.write(outputDirectory, AnalysisReport.from(summary));
+            analysisPath = analysisJsonWriter.write(outputDirectory, AnalysisReport.from(parsedEventLog));
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
             err.printf("Failed to write analysis output: %s%n", exception.getMessage());
@@ -75,6 +77,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Application: %s%n", display(summary.appName()));
         out.printf("Application ID: %s%n", display(summary.appId()));
         out.printf("Duration: %s ms%n", durationDisplay);
+        out.printf("Jobs: %d%n", parsedEventLog.analysisSummary().jobs());
+        out.printf("Stages: %d%n", parsedEventLog.analysisSummary().stages());
+        out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
         out.printf("Output directory: %s%n", outputDirectory);
         out.printf("Analysis JSON: %s%n", analysisPath);
         return 0;

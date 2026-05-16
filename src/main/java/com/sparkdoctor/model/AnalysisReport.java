@@ -7,7 +7,15 @@ public record AnalysisReport(
         AnalysisSummary summary,
         List<Object> bottlenecks,
         List<Object> recommendations) {
+    public static AnalysisReport from(ParsedEventLog parsedEventLog) {
+        return from(parsedEventLog.applicationSummary(), parsedEventLog.analysisSummary());
+    }
+
     public static AnalysisReport from(ApplicationSummary applicationSummary) {
+        return from(applicationSummary, new AnalysisSummary(0, 0, 0, 0));
+    }
+
+    public static AnalysisReport from(ApplicationSummary applicationSummary, AnalysisSummary analysisSummary) {
         ApplicationAnalysis application = new ApplicationAnalysis(
                 applicationSummary.appId(),
                 applicationSummary.appName(),
@@ -19,9 +27,8 @@ public record AnalysisReport(
 
         return new AnalysisReport(
                 application,
-                new AnalysisSummary(0, 0, 0, 0),
+                analysisSummary,
                 List.of(),
                 List.of());
     }
 }
-

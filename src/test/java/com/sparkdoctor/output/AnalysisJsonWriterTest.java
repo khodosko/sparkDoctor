@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.model.AnalysisReport;
+import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,7 +23,8 @@ final class AnalysisJsonWriterTest {
     @Test
     void writesAnalysisJsonIntoOutputDirectory() throws Exception {
         AnalysisReport report = AnalysisReport.from(
-                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L));
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 2, 3, 0));
         Path outputDirectory = tempDir.resolve("report");
 
         Path analysisPath = writer.write(outputDirectory, report);
@@ -34,9 +36,11 @@ final class AnalysisJsonWriterTest {
         assertEquals("app-1", json.path("application").path("id").asText());
         assertEquals("daily_job", json.path("application").path("name").asText());
         assertEquals(1500L, json.path("application").path("durationMillis").asLong());
+        assertEquals(1, json.path("summary").path("jobs").asInt());
+        assertEquals(2, json.path("summary").path("stages").asInt());
+        assertEquals(3, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
         assertTrue(json.path("bottlenecks").isArray());
         assertTrue(json.path("recommendations").isArray());
     }
 }
-

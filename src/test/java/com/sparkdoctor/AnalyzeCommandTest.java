@@ -61,6 +61,9 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Application: daily_customer_etl"));
         assertTrue(output.toString().contains("Application ID: app-20260515120000-0001"));
         assertTrue(output.toString().contains("Duration: 2832000 ms"));
+        assertTrue(output.toString().contains("Jobs: 1"));
+        assertTrue(output.toString().contains("Stages: 2"));
+        assertTrue(output.toString().contains("Tasks: 3"));
     }
 
     @Test
@@ -84,6 +87,9 @@ final class AnalyzeCommandTest {
         assertEquals("app-20260515120000-0001", json.path("application").path("id").asText());
         assertEquals("daily_customer_etl", json.path("application").path("name").asText());
         assertEquals(2832000L, json.path("application").path("durationMillis").asLong());
+        assertEquals(1, json.path("summary").path("jobs").asInt());
+        assertEquals(2, json.path("summary").path("stages").asInt());
+        assertEquals(3, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
     }
 

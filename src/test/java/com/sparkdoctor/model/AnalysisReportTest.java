@@ -25,5 +25,18 @@ final class AnalysisReportTest {
         assertTrue(report.bottlenecks().isEmpty());
         assertTrue(report.recommendations().isEmpty());
     }
-}
 
+    @Test
+    void buildsInitialAnalysisReportFromParsedEventLog() {
+        ParsedEventLog parsedEventLog = new ParsedEventLog(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 2, 3, 0));
+
+        AnalysisReport report = AnalysisReport.from(parsedEventLog);
+
+        assertEquals(1, report.summary().jobs());
+        assertEquals(2, report.summary().stages());
+        assertEquals(3, report.summary().tasks());
+        assertEquals(0, report.summary().issuesDetected());
+    }
+}
