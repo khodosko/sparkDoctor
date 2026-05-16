@@ -39,7 +39,14 @@ final class AnalysisReportTest {
                         "medium",
                         4,
                         "Stage 4 has task duration skew.",
-                        java.util.Map.of("skewRatio", 3.0))));
+                        java.util.Map.of("skewRatio", 3.0))),
+                List.of(new Recommendation(
+                        "investigate-task-duration-skew",
+                        "medium",
+                        "Investigate task duration skew",
+                        "Stage 4 has tasks running much longer than the stage average.",
+                        "task_duration_skew",
+                        4)));
 
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
@@ -57,5 +64,7 @@ final class AnalysisReportTest {
         assertEquals(2000L, report.stages().get(0).avgTaskDurationMillis());
         assertEquals(1, report.bottlenecks().size());
         assertEquals("task_duration_skew", report.bottlenecks().get(0).type());
+        assertEquals(1, report.recommendations().size());
+        assertEquals("investigate-task-duration-skew", report.recommendations().get(0).id());
     }
 }

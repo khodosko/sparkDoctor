@@ -107,6 +107,7 @@ final class AnalyzeCommandTest {
         assertEquals(3000L, json.path("stages").get(1).path("maxTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(1).path("avgTaskDurationMillis").asLong());
         assertEquals(0, json.path("bottlenecks").size());
+        assertEquals(0, json.path("recommendations").size());
     }
 
     @Test
@@ -132,6 +133,10 @@ final class AnalyzeCommandTest {
         assertEquals(1800L, json.path("bottlenecks").get(0).path("evidence").path("avgTaskDurationMillis").asLong());
         assertEquals(9000L, json.path("bottlenecks").get(0).path("evidence").path("maxTaskDurationMillis").asLong());
         assertEquals(5.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("investigate-task-duration-skew", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("task_duration_skew", json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(4, json.path("recommendations").get(0).path("stageId").asInt());
     }
 
     @Test

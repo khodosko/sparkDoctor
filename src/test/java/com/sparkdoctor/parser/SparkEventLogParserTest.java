@@ -100,6 +100,8 @@ final class SparkEventLogParserTest {
 
         assertEquals(1, parsedEventLog.bottlenecks().size());
         assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-task-duration-skew", parsedEventLog.recommendations().get(0).id());
         assertEquals("task_duration_skew", parsedEventLog.bottlenecks().get(0).type());
         assertEquals(4, parsedEventLog.bottlenecks().get(0).stageId());
         assertEquals(10, parsedEventLog.bottlenecks().get(0).evidence().get("completedTasks"));
@@ -168,6 +170,8 @@ final class SparkEventLogParserTest {
         assertEquals(1, parsedEventLog.bottlenecks().size());
         assertEquals("task_duration_skew", parsedEventLog.bottlenecks().get(0).type());
         assertEquals(5.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-task-duration-skew", parsedEventLog.recommendations().get(0).id());
     }
 
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {

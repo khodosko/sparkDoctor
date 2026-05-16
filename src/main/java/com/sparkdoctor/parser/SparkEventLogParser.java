@@ -2,6 +2,7 @@ package com.sparkdoctor.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparkdoctor.analysis.RecommendationEngine;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
@@ -26,18 +27,21 @@ public final class SparkEventLogParser {
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
     private final TaskDurationSkewDetector taskDurationSkewDetector;
+    private final RecommendationEngine recommendationEngine;
 
     public SparkEventLogParser() {
-        this(new EventLogReader(), new ObjectMapper(), new TaskDurationSkewDetector());
+        this(new EventLogReader(), new ObjectMapper(), new TaskDurationSkewDetector(), new RecommendationEngine());
     }
 
     SparkEventLogParser(
             EventLogReader eventLogReader,
             ObjectMapper objectMapper,
-            TaskDurationSkewDetector taskDurationSkewDetector) {
+            TaskDurationSkewDetector taskDurationSkewDetector,
+            RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
         this.objectMapper = objectMapper;
         this.taskDurationSkewDetector = taskDurationSkewDetector;
+        this.recommendationEngine = recommendationEngine;
     }
 
     public ApplicationSummary parseApplicationSummary(Path eventLogPath) throws IOException {
@@ -110,7 +114,8 @@ public final class SparkEventLogParser {
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
                 new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), bottlenecks.size()),
                 stageAnalyses,
-                bottlenecks);
+                bottlenecks,
+                recommendationEngine.recommend(bottlenecks));
     }
 
     private String textOrNull(JsonNode node, String fieldName) {

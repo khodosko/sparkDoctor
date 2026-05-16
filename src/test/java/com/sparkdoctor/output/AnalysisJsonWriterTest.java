@@ -9,6 +9,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
+import com.sparkdoctor.model.Recommendation;
 import com.sparkdoctor.model.StageAnalysis;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +36,14 @@ final class AnalysisJsonWriterTest {
                         "medium",
                         4,
                         "Stage 4 has task duration skew.",
-                        Map.of("skewRatio", 3.0))));
+                        Map.of("skewRatio", 3.0))),
+                List.of(new Recommendation(
+                        "investigate-task-duration-skew",
+                        "medium",
+                        "Investigate task duration skew",
+                        "Stage 4 has tasks running much longer than the stage average.",
+                        "task_duration_skew",
+                        4)));
         Path outputDirectory = tempDir.resolve("report");
 
         Path analysisPath = writer.write(outputDirectory, report);
@@ -62,6 +70,12 @@ final class AnalysisJsonWriterTest {
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());
         assertEquals(3.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
-        assertTrue(json.path("recommendations").isArray());
+        assertEquals("investigate-task-duration-skew", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("medium", json.path("recommendations").get(0).path("severity").asText());
+        assertEquals("Investigate task duration skew", json.path("recommendations").get(0).path("title").asText());
+        assertEquals(
+                "task_duration_skew",
+                json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(4, json.path("recommendations").get(0).path("stageId").asInt());
     }
 }

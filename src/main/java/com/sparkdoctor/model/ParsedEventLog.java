@@ -6,4 +6,5 @@ public record ParsedEventLog(
         ApplicationSummary applicationSummary,
         AnalysisSummary analysisSummary,
         List<StageAnalysis> stages,
-        List<Bottleneck> bottlenecks) {}
+        List<Bottleneck> bottlenecks,
+        List<Recommendation> recommendations) {}

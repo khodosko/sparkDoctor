@@ -7,28 +7,29 @@ public record AnalysisReport(
         AnalysisSummary summary,
         List<StageAnalysis> stages,
         List<Bottleneck> bottlenecks,
-        List<Object> recommendations) {
+        List<Recommendation> recommendations) {
     public static AnalysisReport from(ParsedEventLog parsedEventLog) {
         return from(
                 parsedEventLog.applicationSummary(),
                 parsedEventLog.analysisSummary(),
                 parsedEventLog.stages(),
-                parsedEventLog.bottlenecks());
+                parsedEventLog.bottlenecks(),
+                parsedEventLog.recommendations());
     }
 
     public static AnalysisReport from(ApplicationSummary applicationSummary) {
-        return from(applicationSummary, new AnalysisSummary(0, 0, 0, 0), List.of(), List.of());
+        return from(applicationSummary, new AnalysisSummary(0, 0, 0, 0), List.of(), List.of(), List.of());
     }
 
     public static AnalysisReport from(ApplicationSummary applicationSummary, AnalysisSummary analysisSummary) {
-        return from(applicationSummary, analysisSummary, List.of(), List.of());
+        return from(applicationSummary, analysisSummary, List.of(), List.of(), List.of());
     }
 
     public static AnalysisReport from(
             ApplicationSummary applicationSummary,
             AnalysisSummary analysisSummary,
             List<StageAnalysis> stages) {
-        return from(applicationSummary, analysisSummary, stages, List.of());
+        return from(applicationSummary, analysisSummary, stages, List.of(), List.of());
     }
 
     public static AnalysisReport from(
@@ -36,6 +37,15 @@ public record AnalysisReport(
             AnalysisSummary analysisSummary,
             List<StageAnalysis> stages,
             List<Bottleneck> bottlenecks) {
+        return from(applicationSummary, analysisSummary, stages, bottlenecks, List.of());
+    }
+
+    public static AnalysisReport from(
+            ApplicationSummary applicationSummary,
+            AnalysisSummary analysisSummary,
+            List<StageAnalysis> stages,
+            List<Bottleneck> bottlenecks,
+            List<Recommendation> recommendations) {
         ApplicationAnalysis application = new ApplicationAnalysis(
                 applicationSummary.appId(),
                 applicationSummary.appName(),
@@ -54,6 +64,6 @@ public record AnalysisReport(
                         bottlenecks.size()),
                 stages,
                 bottlenecks,
-                List.of());
+                recommendations);
     }
 }
