@@ -1,6 +1,9 @@
 package com.sparkdoctor.parser;
 
 import com.sparkdoctor.model.StageAnalysis;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 final class StageAccumulator {
     private final int id;
@@ -12,6 +15,7 @@ final class StageAccumulator {
     private Long maxTaskDurationMillis;
     private long shuffleReadBytes;
     private Long maxTaskShuffleReadBytes;
+    private final List<Long> taskShuffleReadBytes = new ArrayList<>();
 
     StageAccumulator(int id) {
         this.id = id;
@@ -35,6 +39,7 @@ final class StageAccumulator {
 
     void addShuffleReadBytes(long taskShuffleReadBytes) {
         shuffleReadBytes += taskShuffleReadBytes;
+        this.taskShuffleReadBytes.add(taskShuffleReadBytes);
         maxTaskShuffleReadBytes = maxTaskShuffleReadBytes == null
                 ? taskShuffleReadBytes
                 : Math.max(maxTaskShuffleReadBytes, taskShuffleReadBytes);
@@ -42,6 +47,9 @@ final class StageAccumulator {
 
     StageAnalysis toStageAnalysis() {
         Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
+        List<Long> sortedTaskShuffleReadBytes = taskShuffleReadBytes.stream()
+                .sorted(Comparator.naturalOrder())
+                .toList();
         return new StageAnalysis(
                 id,
                 name,
@@ -51,6 +59,34 @@ final class StageAccumulator {
                 maxTaskDurationMillis,
                 avgTaskDurationMillis,
                 shuffleReadBytes,
-                maxTaskShuffleReadBytes);
+                maxTaskShuffleReadBytes,
+                median(sortedTaskShuffleReadBytes),
+                percentile(sortedTaskShuffleReadBytes, 0.95),
+                percentile(sortedTaskShuffleReadBytes, 0.99),
+                sortedTaskShuffleReadBytes);
+    }
+
+    private Long median(List<Long> sortedValues) {
+        if (sortedValues.isEmpty()) {
+            return null;
+        }
+
+        int middleIndex = sortedValues.size() / 2;
+        if (sortedValues.size() % 2 == 1) {
+            return sortedValues.get(middleIndex);
+        }
+
+        long lower = sortedValues.get(middleIndex - 1);
+        long upper = sortedValues.get(middleIndex);
+        return lower + (upper - lower) / 2;
+    }
+
+    private Long percentile(List<Long> sortedValues, double percentile) {
+        if (sortedValues.isEmpty()) {
+            return null;
+        }
+
+        int index = (int) Math.ceil(percentile * sortedValues.size()) - 1;
+        return sortedValues.get(Math.max(0, Math.min(index, sortedValues.size() - 1)));
     }
 }

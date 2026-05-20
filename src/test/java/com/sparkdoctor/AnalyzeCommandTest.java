@@ -101,6 +101,12 @@ final class AnalyzeCommandTest {
         assertEquals(2500L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
         assertEquals(8000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
         assertEquals(5000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(4000L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("p99TaskShuffleReadBytes").asLong());
+        assertEquals(2, json.path("stages").get(0).path("taskShuffleReadBytes").size());
+        assertEquals(3000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(1).asLong());
         assertEquals(1, json.path("stages").get(1).path("id").asInt());
         assertEquals("aggregate", json.path("stages").get(1).path("name").asText());
         assertEquals(1, json.path("stages").get(1).path("taskCount").asInt());
@@ -110,6 +116,11 @@ final class AnalyzeCommandTest {
         assertEquals(3000L, json.path("stages").get(1).path("avgTaskDurationMillis").asLong());
         assertEquals(8000L, json.path("stages").get(1).path("shuffleReadBytes").asLong());
         assertEquals(8000L, json.path("stages").get(1).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(8000L, json.path("stages").get(1).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(8000L, json.path("stages").get(1).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(8000L, json.path("stages").get(1).path("p99TaskShuffleReadBytes").asLong());
+        assertEquals(1, json.path("stages").get(1).path("taskShuffleReadBytes").size());
+        assertEquals(8000L, json.path("stages").get(1).path("taskShuffleReadBytes").get(0).asLong());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
     }
@@ -139,6 +150,12 @@ final class AnalyzeCommandTest {
         assertEquals(5.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
         assertEquals(19000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
         assertEquals(10000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(1000L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(10000L, json.path("stages").get(0).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(10000L, json.path("stages").get(0).path("p99TaskShuffleReadBytes").asLong());
+        assertEquals(10, json.path("stages").get(0).path("taskShuffleReadBytes").size());
+        assertEquals(1000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
+        assertEquals(10000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(9).asLong());
         assertEquals(1, json.path("recommendations").size());
         assertEquals("investigate-task-duration-skew", json.path("recommendations").get(0).path("id").asText());
         assertEquals("task_duration_skew", json.path("recommendations").get(0).path("relatedBottleneckType").asText());

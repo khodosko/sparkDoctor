@@ -30,7 +30,20 @@ final class AnalysisJsonWriterTest {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 2, 3, 0),
-                List.of(new StageAnalysis(4, "read parquet", 12, 2, 1000L, 3000L, 2000L, 7000L, 5000L)),
+                List.of(new StageAnalysis(
+                        4,
+                        "read parquet",
+                        12,
+                        2,
+                        1000L,
+                        3000L,
+                        2000L,
+                        7000L,
+                        5000L,
+                        3500L,
+                        5000L,
+                        5000L,
+                        List.of(2000L, 5000L))),
                 List.of(new Bottleneck(
                         "task_duration_skew",
                         "medium",
@@ -68,6 +81,12 @@ final class AnalysisJsonWriterTest {
         assertEquals(2000L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
         assertEquals(7000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
         assertEquals(5000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(3500L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("p99TaskShuffleReadBytes").asLong());
+        assertEquals(2, json.path("stages").get(0).path("taskShuffleReadBytes").size());
+        assertEquals(2000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
+        assertEquals(5000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(1).asLong());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());

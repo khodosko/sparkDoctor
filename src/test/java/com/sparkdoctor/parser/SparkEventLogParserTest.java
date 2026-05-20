@@ -63,6 +63,10 @@ final class SparkEventLogParserTest {
         assertNull(parsedEventLog.stages().get(0).avgTaskDurationMillis());
         assertEquals(0L, parsedEventLog.stages().get(0).shuffleReadBytes());
         assertNull(parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertNull(parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertNull(parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertNull(parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
+        assertEquals(List.of(), parsedEventLog.stages().get(0).taskShuffleReadBytes());
     }
 
     @Test
@@ -95,6 +99,10 @@ final class SparkEventLogParserTest {
         assertEquals(1, parsedEventLog.stages().size());
         assertEquals(8000L, parsedEventLog.stages().get(0).shuffleReadBytes());
         assertEquals(5000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(4000L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
+        assertEquals(List.of(3000L, 5000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
     }
 
     @Test
@@ -156,6 +164,10 @@ final class SparkEventLogParserTest {
         assertEquals(2500L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
         assertEquals(8000L, parsedEventLog.stages().get(0).shuffleReadBytes());
         assertEquals(5000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(4000L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(5000L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
+        assertEquals(List.of(3000L, 5000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
         assertEquals(1, parsedEventLog.stages().get(1).id());
         assertEquals("aggregate", parsedEventLog.stages().get(1).name());
         assertEquals(1, parsedEventLog.stages().get(1).taskCount());
@@ -165,6 +177,10 @@ final class SparkEventLogParserTest {
         assertEquals(3000L, parsedEventLog.stages().get(1).avgTaskDurationMillis());
         assertEquals(8000L, parsedEventLog.stages().get(1).shuffleReadBytes());
         assertEquals(8000L, parsedEventLog.stages().get(1).maxTaskShuffleReadBytes());
+        assertEquals(8000L, parsedEventLog.stages().get(1).medianTaskShuffleReadBytes());
+        assertEquals(8000L, parsedEventLog.stages().get(1).p95TaskShuffleReadBytes());
+        assertEquals(8000L, parsedEventLog.stages().get(1).p99TaskShuffleReadBytes());
+        assertEquals(List.of(8000L), parsedEventLog.stages().get(1).taskShuffleReadBytes());
         assertEquals(0, parsedEventLog.bottlenecks().size());
     }
 
@@ -192,6 +208,12 @@ final class SparkEventLogParserTest {
         assertEquals(5.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
         assertEquals(19000L, parsedEventLog.stages().get(0).shuffleReadBytes());
         assertEquals(10000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(1000L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(10000L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(10000L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
+        assertEquals(
+                List.of(1000L, 1000L, 1000L, 1000L, 1000L, 1000L, 1000L, 1000L, 1000L, 10000L),
+                parsedEventLog.stages().get(0).taskShuffleReadBytes());
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("investigate-task-duration-skew", parsedEventLog.recommendations().get(0).id());
     }

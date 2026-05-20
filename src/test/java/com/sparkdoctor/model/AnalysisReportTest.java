@@ -64,6 +64,7 @@ final class AnalysisReportTest {
         assertEquals(2000L, report.stages().get(0).avgTaskDurationMillis());
         assertEquals(7000L, report.stages().get(0).shuffleReadBytes());
         assertEquals(5000L, report.stages().get(0).maxTaskShuffleReadBytes());
+        assertTrue(report.stages().get(0).taskShuffleReadBytes().isEmpty());
         assertEquals(1, report.bottlenecks().size());
         assertEquals("task_duration_skew", report.bottlenecks().get(0).type());
         assertEquals(1, report.recommendations().size());
