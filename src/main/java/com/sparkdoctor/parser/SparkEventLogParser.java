@@ -3,6 +3,7 @@ package com.sparkdoctor.parser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.analysis.RecommendationEngine;
+import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
@@ -11,6 +12,7 @@ import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,20 +29,28 @@ public final class SparkEventLogParser {
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
     private final TaskDurationSkewDetector taskDurationSkewDetector;
+    private final ShufflePartitionSkewDetector shufflePartitionSkewDetector;
     private final RecommendationEngine recommendationEngine;
 
     public SparkEventLogParser() {
-        this(new EventLogReader(), new ObjectMapper(), new TaskDurationSkewDetector(), new RecommendationEngine());
+        this(
+                new EventLogReader(),
+                new ObjectMapper(),
+                new TaskDurationSkewDetector(),
+                new ShufflePartitionSkewDetector(),
+                new RecommendationEngine());
     }
 
     SparkEventLogParser(
             EventLogReader eventLogReader,
             ObjectMapper objectMapper,
             TaskDurationSkewDetector taskDurationSkewDetector,
+            ShufflePartitionSkewDetector shufflePartitionSkewDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
         this.objectMapper = objectMapper;
         this.taskDurationSkewDetector = taskDurationSkewDetector;
+        this.shufflePartitionSkewDetector = shufflePartitionSkewDetector;
         this.recommendationEngine = recommendationEngine;
     }
 
@@ -113,7 +123,9 @@ public final class SparkEventLogParser {
         List<StageAnalysis> stageAnalyses = stages.values().stream()
                 .map(StageAccumulator::toStageAnalysis)
                 .toList();
-        List<Bottleneck> bottlenecks = taskDurationSkewDetector.detect(stageAnalyses);
+        List<Bottleneck> bottlenecks = new ArrayList<>();
+        bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
+        bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),

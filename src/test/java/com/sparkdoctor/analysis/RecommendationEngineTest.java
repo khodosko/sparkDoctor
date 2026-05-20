@@ -34,6 +34,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsMitigationForShufflePartitionSkew() {
+        Bottleneck bottleneck = new Bottleneck(
+                "shuffle_partition_skew",
+                "high",
+                4,
+                "Stage 4 has shuffle partition skew.",
+                Map.of("skewRatio", 30.0));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("mitigate-shuffle-partition-skew", recommendation.id());
+        assertEquals("high", recommendation.severity());
+        assertEquals("Mitigate shuffle partition skew", recommendation.title());
+        assertEquals("shuffle_partition_skew", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("AQE skew join"));
+        assertTrue(recommendation.description().contains("salting"));
+    }
+
+    @Test
     void ignoresUnknownBottleneckTypes() {
         Bottleneck bottleneck = new Bottleneck(
                 "unknown",
@@ -47,4 +69,3 @@ final class RecommendationEngineTest {
         assertTrue(recommendations.isEmpty());
     }
 }
-

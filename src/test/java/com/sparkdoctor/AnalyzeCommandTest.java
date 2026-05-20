@@ -163,6 +163,48 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesShufflePartitionSkewBottleneckForShuffleSkewedFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("shuffle-skewed-report");
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/shuffle-skewed-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("shuffle_skewed_customer_etl", json.path("application").path("name").asText());
+        assertEquals(10, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(408944640L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(10485760L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("p99TaskShuffleReadBytes").asLong());
+        assertEquals(10, json.path("stages").get(0).path("taskShuffleReadBytes").size());
+        assertEquals(10485760L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("taskShuffleReadBytes").get(9).asLong());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("shuffle_partition_skew", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("high", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(8, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(30.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
+        assertEquals(
+                10485760L,
+                json.path("bottlenecks").get(0).path("evidence").path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(
+                314572800L,
+                json.path("bottlenecks").get(0).path("evidence").path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("mitigate-shuffle-partition-skew", json.path("recommendations").get(0).path("id").asText());
+        assertEquals(
+                "shuffle_partition_skew",
+                json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(8, json.path("recommendations").get(0).path("stageId").asInt());
+    }
+
+    @Test
     void analyzeReturnsErrorWhenAnalysisJsonCannotBeWritten() throws Exception {
         Path outputPathThatIsAFile = tempDir.resolve("report");
         Files.writeString(outputPathThatIsAFile, "not a directory");

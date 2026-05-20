@@ -11,6 +11,8 @@ public final class RecommendationEngine {
         for (Bottleneck bottleneck : bottlenecks) {
             if ("task_duration_skew".equals(bottleneck.type())) {
                 recommendations.add(taskDurationSkewRecommendation(bottleneck));
+            } else if ("shuffle_partition_skew".equals(bottleneck.type())) {
+                recommendations.add(shufflePartitionSkewRecommendation(bottleneck));
             }
         }
 
@@ -28,5 +30,17 @@ public final class RecommendationEngine {
                 bottleneck.type(),
                 bottleneck.stageId());
     }
-}
 
+    private Recommendation shufflePartitionSkewRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "mitigate-shuffle-partition-skew",
+                bottleneck.severity(),
+                "Mitigate shuffle partition skew",
+                "Stage %d has one or more shuffle partitions much larger than the median partition. "
+                        .formatted(bottleneck.stageId())
+                        + "Enable or tune Spark AQE skew join handling, inspect skewed join keys, "
+                        + "consider salting hot keys, repartition by a better key, or pre-aggregate before joins.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+}

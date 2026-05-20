@@ -218,6 +218,38 @@ final class SparkEventLogParserTest {
         assertEquals("investigate-task-duration-skew", parsedEventLog.recommendations().get(0).id());
     }
 
+    @Test
+    void parsesShufflePartitionSkewFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/shuffle-skewed-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-shuffle-skewed-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("shuffle_skewed_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(10, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(8, parsedEventLog.stages().get(0).id());
+        assertEquals("skewed shuffle read", parsedEventLog.stages().get(0).name());
+        assertEquals(10, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(408944640L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(10485760L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("shuffle_partition_skew", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("high", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(8, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(30.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+        assertEquals(10485760L, parsedEventLog.bottlenecks().get(0).evidence().get("medianTaskShuffleReadBytes"));
+        assertEquals(314572800L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskShuffleReadBytes"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("mitigate-shuffle-partition-skew", parsedEventLog.recommendations().get(0).id());
+    }
+
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {
         return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"
