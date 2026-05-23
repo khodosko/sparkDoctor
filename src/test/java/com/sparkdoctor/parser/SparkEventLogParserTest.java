@@ -126,6 +126,31 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void aggregatesOnlySuccessfulTaskAttemptsByStageAttemptAndTaskIndex() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":2}}",
+                taskEndAttempt(4, 0, 100, 0, false, 0, 10000, 9000, 9000, 9000, 9000),
+                taskEndAttempt(4, 0, 101, 0, true, 0, 1000, 1000, 100, 10, 1),
+                taskEndAttempt(4, 0, 102, 1, true, 0, 2000, 2000, 200, 20, 2)));
+
+        assertEquals(2, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(2, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(2000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(1500L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(3000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(2000L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(List.of(1000L, 2000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
+        assertEquals(300L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(30L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertEquals(200L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertEquals(20L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
+    }
+
+    @Test
     void detectsTaskDurationSkewFromParsedTaskEvents() throws Exception {
         ParsedEventLog parsedEventLog = parser.parse(List.of(
                 "{\"Event\":\"SparkListenerStageSubmitted\","
@@ -341,5 +366,39 @@ final class SparkEventLogParserTest {
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d},"
                 + "\"Task Metrics\":{\"Memory Bytes Spilled\":%d,\"Disk Bytes Spilled\":%d}}"
         ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis, memoryBytesSpilled, diskBytesSpilled);
+    }
+
+    private String taskEndAttempt(
+            int stageId,
+            int stageAttemptId,
+            long taskId,
+            long taskIndex,
+            boolean successful,
+            long launchTimeMillis,
+            long finishTimeMillis,
+            long shuffleReadBytes,
+            long memoryBytesSpilled,
+            long diskBytesSpilled,
+            long remoteBytesRead) {
+        String reason = successful ? "Success" : "ExceptionFailure";
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,\"Stage Attempt ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Index\":%d,\"Launch Time\":%d,\"Finish Time\":%d,"
+                + "\"Successful\":%s},"
+                + "\"Task End Reason\":{\"Reason\":\"%s\"},"
+                + "\"Task Metrics\":{\"Memory Bytes Spilled\":%d,\"Disk Bytes Spilled\":%d,"
+                + "\"Shuffle Read Metrics\":{\"Local Bytes Read\":%d,\"Remote Bytes Read\":%d}}}"
+        ).formatted(
+                stageId,
+                stageAttemptId,
+                taskId,
+                taskIndex,
+                launchTimeMillis,
+                finishTimeMillis,
+                successful,
+                reason,
+                memoryBytesSpilled,
+                diskBytesSpilled,
+                shuffleReadBytes - remoteBytesRead,
+                remoteBytesRead);
     }
 }

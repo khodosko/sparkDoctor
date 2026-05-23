@@ -78,8 +78,9 @@ public final class SparkEventLogParser {
         Long endTimeMillis = null;
         Set<Integer> jobIds = new HashSet<>();
         Set<Integer> stageIds = new HashSet<>();
-        Set<Long> taskIds = new HashSet<>();
+        Set<String> taskKeys = new HashSet<>();
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
+        Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
 
         for (String eventLine : eventLines) {
             JsonNode event = objectMapper.readTree(eventLine);
@@ -107,26 +108,42 @@ public final class SparkEventLogParser {
                                     intOrNull(stageInfo, "Number of Tasks"));
                 }
             } else if (TASK_END.equals(eventType)) {
-                Long taskId = taskId(event);
-                if (taskId != null) {
-                    taskIds.add(taskId);
-                }
                 Integer stageId = stageId(event, event.get("Stage Info"));
+                Integer stageAttemptId = stageAttemptId(event, event.get("Stage Info"));
+                Long taskIndex = taskIndex(event);
+                Long taskId = taskId(event);
+                if (!isSuccessfulTaskEnd(event)) {
+                    continue;
+                }
+                String taskKey = taskKey(stageId, stageAttemptId, taskIndex, taskId);
+                if (taskKey != null) {
+                    taskKeys.add(taskKey);
+                }
+                if (stageId == null || taskIndex == null) {
+                    continue;
+                }
+
                 Long taskDurationMillis = taskDurationMillis(event);
-                if (stageId != null && taskDurationMillis != null) {
-                    stages.computeIfAbsent(stageId, StageAccumulator::new)
-                            .addTaskDuration(taskDurationMillis);
-                }
                 Long shuffleReadBytes = shuffleReadBytes(event);
-                if (stageId != null && shuffleReadBytes != null) {
-                    stages.computeIfAbsent(stageId, StageAccumulator::new)
-                            .addShuffleReadBytes(shuffleReadBytes);
-                }
                 TaskSpillMetrics spillMetrics = spillMetrics(event);
-                if (stageId != null && spillMetrics != null) {
-                    stages.computeIfAbsent(stageId, StageAccumulator::new)
-                            .addSpillBytes(spillMetrics.memoryBytesSpilled(), spillMetrics.diskBytesSpilled());
-                }
+                successfulTaskAttempts.put(
+                        new TaskAttemptKey(stageId, stageAttemptId == null ? 0 : stageAttemptId, taskIndex),
+                        new ParsedTaskAttempt(stageId, taskDurationMillis, shuffleReadBytes, spillMetrics));
+            }
+        }
+
+        for (ParsedTaskAttempt taskAttempt : successfulTaskAttempts.values()) {
+            StageAccumulator stage = stages.computeIfAbsent(taskAttempt.stageId(), StageAccumulator::new);
+            if (taskAttempt.taskDurationMillis() != null) {
+                stage.addTaskDuration(taskAttempt.taskDurationMillis());
+            }
+            if (taskAttempt.shuffleReadBytes() != null) {
+                stage.addShuffleReadBytes(taskAttempt.shuffleReadBytes());
+            }
+            if (taskAttempt.spillMetrics() != null) {
+                stage.addSpillBytes(
+                        taskAttempt.spillMetrics().memoryBytesSpilled(),
+                        taskAttempt.spillMetrics().diskBytesSpilled());
             }
         }
 
@@ -140,7 +157,7 @@ public final class SparkEventLogParser {
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
-                new AnalysisSummary(jobIds.size(), stageIds.size(), taskIds.size(), bottlenecks.size()),
+                new AnalysisSummary(jobIds.size(), stageIds.size(), taskKeys.size(), bottlenecks.size()),
                 stageAnalyses,
                 bottlenecks,
                 recommendationEngine.recommend(bottlenecks));
@@ -207,6 +224,59 @@ public final class SparkEventLogParser {
         return longOrNull(taskInfo, "Task ID");
     }
 
+    private Long taskIndex(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        if (taskInfo == null || taskInfo.isNull()) {
+            return null;
+        }
+
+        Long taskIndex = longOrNull(taskInfo, "Index");
+        if (taskIndex != null) {
+            return taskIndex;
+        }
+
+        return longOrNull(taskInfo, "Task ID");
+    }
+
+    private Integer stageAttemptId(JsonNode event, JsonNode stageInfo) {
+        Integer directStageAttemptId = intOrNull(event, "Stage Attempt ID");
+        if (directStageAttemptId != null) {
+            return directStageAttemptId;
+        }
+
+        if (stageInfo == null || stageInfo.isNull()) {
+            return null;
+        }
+
+        return intOrNull(stageInfo, "Stage Attempt ID");
+    }
+
+    private boolean isSuccessfulTaskEnd(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        if (taskInfo != null && taskInfo.has("Successful") && !taskInfo.path("Successful").asBoolean()) {
+            return false;
+        }
+
+        JsonNode taskEndReason = event.get("Task End Reason");
+        if (taskEndReason == null || taskEndReason.isNull()) {
+            return true;
+        }
+
+        String reason = textOrNull(taskEndReason, "Reason");
+        return reason == null || "Success".equals(reason);
+    }
+
+    private String taskKey(Integer stageId, Integer stageAttemptId, Long taskIndex, Long taskId) {
+        if (stageId != null && taskIndex != null) {
+            return stageId + ":" + (stageAttemptId == null ? 0 : stageAttemptId) + ":" + taskIndex;
+        }
+        if (taskId != null) {
+            return "task-id:" + taskId;
+        }
+
+        return null;
+    }
+
     private Long taskDurationMillis(JsonNode event) {
         JsonNode taskInfo = event.get("Task Info");
         if (taskInfo == null || taskInfo.isNull()) {
@@ -258,4 +328,12 @@ public final class SparkEventLogParser {
     }
 
     private record TaskSpillMetrics(long memoryBytesSpilled, long diskBytesSpilled) {}
+
+    private record TaskAttemptKey(int stageId, int stageAttemptId, long taskIndex) {}
+
+    private record ParsedTaskAttempt(
+            int stageId,
+            Long taskDurationMillis,
+            Long shuffleReadBytes,
+            TaskSpillMetrics spillMetrics) {}
 }
