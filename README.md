@@ -141,18 +141,45 @@ Run tests:
 gradle test
 ```
 
+Install the local CLI launcher:
+
+```bash
+gradle installDist
+```
+
+Add the generated launcher to your current shell:
+
+```bash
+export PATH="$PWD/build/install/sparkdoctor/bin:$PATH"
+```
+
+Now verify the command is available:
+
+```bash
+sparkdoctor --help
+sparkdoctor analyze --help
+```
+
 ## Usage
 
 Analyze a Spark event log:
 
 ```bash
-gradle run --args="analyze path/to/eventlog --out ./sparkdoctor-report"
+sparkdoctor analyze path/to/eventlog --out ./sparkdoctor-report
 ```
+
+`--out` is an `analyze` option. Run `sparkdoctor analyze --help` to see analyze-specific options.
 
 Example with the included fixture:
 
 ```bash
-gradle run --args="analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report"
+sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
+```
+
+If you have not added SparkDoctor to `PATH`, run the generated launcher directly:
+
+```bash
+./build/install/sparkdoctor/bin/sparkdoctor analyze path/to/eventlog --out ./sparkdoctor-report
 ```
 
 Output files:
@@ -239,6 +266,29 @@ Use `analysis.json` when you want the raw evidence:
 - look at `bottlenecks` for detected issues and evidence thresholds
 - look at `recommendations` for suggested next actions
 
+## Known Limitations
+
+SparkDoctor is not a complete Spark UI replacement yet.
+
+Current limitations:
+
+- Most test coverage uses synthetic event logs.
+- SQL execution plan analysis is not implemented yet.
+- Stage completed and job end events are not fully modeled yet.
+- Executor imbalance detection is not implemented yet.
+- Low parallelism and partition sizing detectors are not implemented yet.
+- Detector thresholds are conservative and will change as more real workloads are tested.
+
+If SparkDoctor misses a real issue or reports something incorrect, please include:
+
+- Spark version
+- deployment environment, for example local Spark, EMR, Databricks, Kubernetes, or YARN
+- the command you ran
+- `analysis.json`
+- `recommendations.md`
+- a small sanitized event log if possible
+- what you expected SparkDoctor to report
+
 ## Development
 
 Run tests:
@@ -250,10 +300,17 @@ gradle test
 Run the CLI against fixtures:
 
 ```bash
+gradle installDist
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
+```
+
+For development, `gradle run` still works:
+
+```bash
 gradle run --args="analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report"
-gradle run --args="analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report"
-gradle run --args="analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report"
-gradle run --args="analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report"
 ```
 
 ## Contributing

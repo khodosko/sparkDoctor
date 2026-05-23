@@ -13,6 +13,7 @@ java {
 }
 
 application {
+    applicationName = "sparkdoctor"
     mainClass = "com.sparkdoctor.SparkDoctorCli"
 }
 

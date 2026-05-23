@@ -18,6 +18,7 @@ final class SparkDoctorCliTest {
 
         assertEquals(0, exitCode);
         assertTrue(output.toString().contains("sparkdoctor --help"));
+        assertTrue(output.toString().contains("sparkdoctor analyze --help"));
     }
 
     @Test
@@ -30,5 +31,18 @@ final class SparkDoctorCliTest {
 
         assertEquals(0, exitCode);
         assertTrue(output.toString().contains("analyze"));
+    }
+
+    @Test
+    void analyzeHelpListsOutputDirectoryOption() {
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new SparkDoctorCli());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute("analyze", "--help");
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("--out"));
+        assertTrue(output.toString().contains("<report-directory>"));
     }
 }

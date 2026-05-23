@@ -29,7 +29,8 @@ public final class SparkDoctorCli implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        out.println("Run `sparkdoctor --help` for usage.");
+        out.println("Run `sparkdoctor --help` for commands.");
+        out.println("Run `sparkdoctor analyze --help` for analyze options.");
         return 0;
     }
 }
