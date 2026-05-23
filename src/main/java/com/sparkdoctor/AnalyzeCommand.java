@@ -89,6 +89,19 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Jobs: %d%n", parsedEventLog.analysisSummary().jobs());
         out.printf("Stages: %d%n", parsedEventLog.analysisSummary().stages());
         out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
+        out.printf("Issues detected: %d%n", parsedEventLog.analysisSummary().issuesDetected());
+        out.printf("Recommendations: %d%n", parsedEventLog.recommendations().size());
+        if (!parsedEventLog.bottlenecks().isEmpty()) {
+            out.println("Top bottlenecks:");
+            parsedEventLog.bottlenecks().stream()
+                    .limit(3)
+                    .forEach(bottleneck -> out.printf(
+                            "- [%s] %s (stage %d): %s%n",
+                            bottleneck.severity(),
+                            bottleneck.type(),
+                            bottleneck.stageId(),
+                            bottleneck.message()));
+        }
         out.printf("Output directory: %s%n", outputDirectory);
         out.printf("Analysis JSON: %s%n", analysisPath);
         out.printf("Recommendations Markdown: %s%n", recommendationsPath);

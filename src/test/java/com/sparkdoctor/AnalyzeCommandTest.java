@@ -64,6 +64,8 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Jobs: 1"));
         assertTrue(output.toString().contains("Stages: 2"));
         assertTrue(output.toString().contains("Tasks: 3"));
+        assertTrue(output.toString().contains("Issues detected: 0"));
+        assertTrue(output.toString().contains("Recommendations: 0"));
     }
 
     @Test
@@ -219,7 +221,9 @@ final class AnalyzeCommandTest {
     @Test
     void analyzeWritesSpillPressureBottleneckForSpillHeavyFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("spill-heavy-report");
+        StringWriter output = new StringWriter();
         CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
 
         int exitCode = commandLine.execute(
                 "src/test/resources/fixtures/spill-heavy-eventlog.json",
@@ -227,6 +231,10 @@ final class AnalyzeCommandTest {
                 outputDirectory.toString());
 
         assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains("Top bottlenecks:"));
+        assertTrue(output.toString().contains("- [medium] spill_pressure (stage 9): Stage 9 has spill pressure."));
         JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
         assertEquals("spill_heavy_customer_etl", json.path("application").path("name").asText());
         assertEquals(2, json.path("summary").path("tasks").asInt());
