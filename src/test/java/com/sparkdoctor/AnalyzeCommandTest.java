@@ -107,6 +107,10 @@ final class AnalyzeCommandTest {
         assertEquals(2, json.path("stages").get(0).path("taskShuffleReadBytes").size());
         assertEquals(3000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
         assertEquals(5000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(1).asLong());
+        assertEquals(300L, json.path("stages").get(0).path("memoryBytesSpilled").asLong());
+        assertEquals(30L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(20L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
         assertEquals(1, json.path("stages").get(1).path("id").asInt());
         assertEquals("aggregate", json.path("stages").get(1).path("name").asText());
         assertEquals(1, json.path("stages").get(1).path("taskCount").asInt());
@@ -121,6 +125,10 @@ final class AnalyzeCommandTest {
         assertEquals(8000L, json.path("stages").get(1).path("p99TaskShuffleReadBytes").asLong());
         assertEquals(1, json.path("stages").get(1).path("taskShuffleReadBytes").size());
         assertEquals(8000L, json.path("stages").get(1).path("taskShuffleReadBytes").get(0).asLong());
+        assertEquals(500L, json.path("stages").get(1).path("memoryBytesSpilled").asLong());
+        assertEquals(100L, json.path("stages").get(1).path("diskBytesSpilled").asLong());
+        assertEquals(500L, json.path("stages").get(1).path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(100L, json.path("stages").get(1).path("maxTaskDiskBytesSpilled").asLong());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
     }

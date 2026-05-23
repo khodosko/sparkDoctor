@@ -67,6 +67,10 @@ final class SparkEventLogParserTest {
         assertNull(parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
         assertNull(parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
         assertEquals(List.of(), parsedEventLog.stages().get(0).taskShuffleReadBytes());
+        assertEquals(0L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(0L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertNull(parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertNull(parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
     }
 
     @Test
@@ -103,6 +107,22 @@ final class SparkEventLogParserTest {
         assertEquals(5000L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
         assertEquals(5000L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
         assertEquals(List.of(3000L, 5000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
+    }
+
+    @Test
+    void parsesSpillBytesByStage() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Name\":\"spill\","
+                        + "\"Number of Tasks\":2}}",
+                taskEndWithSpill(4, 100, 0, 1000, 1000, 500),
+                taskEndWithSpill(4, 101, 0, 1000, 4000, 3000)));
+
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(5000L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(3500L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertEquals(4000L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertEquals(3000L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
     }
 
     @Test
@@ -168,6 +188,10 @@ final class SparkEventLogParserTest {
         assertEquals(5000L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
         assertEquals(5000L, parsedEventLog.stages().get(0).p99TaskShuffleReadBytes());
         assertEquals(List.of(3000L, 5000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
+        assertEquals(300L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(30L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertEquals(200L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertEquals(20L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
         assertEquals(1, parsedEventLog.stages().get(1).id());
         assertEquals("aggregate", parsedEventLog.stages().get(1).name());
         assertEquals(1, parsedEventLog.stages().get(1).taskCount());
@@ -181,6 +205,10 @@ final class SparkEventLogParserTest {
         assertEquals(8000L, parsedEventLog.stages().get(1).p95TaskShuffleReadBytes());
         assertEquals(8000L, parsedEventLog.stages().get(1).p99TaskShuffleReadBytes());
         assertEquals(List.of(8000L), parsedEventLog.stages().get(1).taskShuffleReadBytes());
+        assertEquals(500L, parsedEventLog.stages().get(1).memoryBytesSpilled());
+        assertEquals(100L, parsedEventLog.stages().get(1).diskBytesSpilled());
+        assertEquals(500L, parsedEventLog.stages().get(1).maxTaskMemoryBytesSpilled());
+        assertEquals(100L, parsedEventLog.stages().get(1).maxTaskDiskBytesSpilled());
         assertEquals(0, parsedEventLog.bottlenecks().size());
     }
 
@@ -268,5 +296,18 @@ final class SparkEventLogParserTest {
                 + "\"Task Metrics\":{\"Shuffle Read Metrics\":{"
                 + "\"Local Bytes Read\":%d,\"Remote Bytes Read\":%d}}}"
         ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis, localBytesRead, remoteBytesRead);
+    }
+
+    private String taskEndWithSpill(
+            int stageId,
+            long taskId,
+            long launchTimeMillis,
+            long finishTimeMillis,
+            long memoryBytesSpilled,
+            long diskBytesSpilled) {
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d},"
+                + "\"Task Metrics\":{\"Memory Bytes Spilled\":%d,\"Disk Bytes Spilled\":%d}}"
+        ).formatted(stageId, taskId, launchTimeMillis, finishTimeMillis, memoryBytesSpilled, diskBytesSpilled);
     }
 }

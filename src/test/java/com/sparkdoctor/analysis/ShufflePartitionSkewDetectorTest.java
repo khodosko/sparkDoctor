@@ -36,7 +36,11 @@ final class ShufflePartitionSkewDetectorTest {
                         10L * 1024L * 1024L,
                         10L * 1024L * 1024L,
                         15L * 1024L * 1024L,
-                        300L * 1024L * 1024L));
+                        300L * 1024L * 1024L),
+                0L,
+                0L,
+                null,
+                null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
@@ -67,7 +71,11 @@ final class ShufflePartitionSkewDetectorTest {
                 10L * 1024L * 1024L,
                 300L * 1024L * 1024L,
                 300L * 1024L * 1024L,
-                List.of(10L * 1024L * 1024L, 300L * 1024L * 1024L));
+                List.of(10L * 1024L * 1024L, 300L * 1024L * 1024L),
+                0L,
+                0L,
+                null,
+                null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
@@ -99,7 +107,11 @@ final class ShufflePartitionSkewDetectorTest {
                         10L * 1024L * 1024L,
                         10L * 1024L * 1024L,
                         10L * 1024L * 1024L,
-                        40L * 1024L * 1024L));
+                        40L * 1024L * 1024L),
+                0L,
+                0L,
+                null,
+                null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
@@ -131,7 +143,11 @@ final class ShufflePartitionSkewDetectorTest {
                         300L * 1024L * 1024L,
                         300L * 1024L * 1024L,
                         300L * 1024L * 1024L,
-                        300L * 1024L * 1024L));
+                        300L * 1024L * 1024L),
+                0L,
+                0L,
+                null,
+                null);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 

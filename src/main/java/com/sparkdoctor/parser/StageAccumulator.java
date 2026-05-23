@@ -16,6 +16,10 @@ final class StageAccumulator {
     private long shuffleReadBytes;
     private Long maxTaskShuffleReadBytes;
     private final List<Long> taskShuffleReadBytes = new ArrayList<>();
+    private long memoryBytesSpilled;
+    private long diskBytesSpilled;
+    private Long maxTaskMemoryBytesSpilled;
+    private Long maxTaskDiskBytesSpilled;
 
     StageAccumulator(int id) {
         this.id = id;
@@ -45,6 +49,17 @@ final class StageAccumulator {
                 : Math.max(maxTaskShuffleReadBytes, taskShuffleReadBytes);
     }
 
+    void addSpillBytes(long taskMemoryBytesSpilled, long taskDiskBytesSpilled) {
+        memoryBytesSpilled += taskMemoryBytesSpilled;
+        diskBytesSpilled += taskDiskBytesSpilled;
+        maxTaskMemoryBytesSpilled = maxTaskMemoryBytesSpilled == null
+                ? taskMemoryBytesSpilled
+                : Math.max(maxTaskMemoryBytesSpilled, taskMemoryBytesSpilled);
+        maxTaskDiskBytesSpilled = maxTaskDiskBytesSpilled == null
+                ? taskDiskBytesSpilled
+                : Math.max(maxTaskDiskBytesSpilled, taskDiskBytesSpilled);
+    }
+
     StageAnalysis toStageAnalysis() {
         Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
         List<Long> sortedTaskShuffleReadBytes = taskShuffleReadBytes.stream()
@@ -63,7 +78,11 @@ final class StageAccumulator {
                 median(sortedTaskShuffleReadBytes),
                 percentile(sortedTaskShuffleReadBytes, 0.95),
                 percentile(sortedTaskShuffleReadBytes, 0.99),
-                sortedTaskShuffleReadBytes);
+                sortedTaskShuffleReadBytes,
+                memoryBytesSpilled,
+                diskBytesSpilled,
+                maxTaskMemoryBytesSpilled,
+                maxTaskDiskBytesSpilled);
     }
 
     private Long median(List<Long> sortedValues) {

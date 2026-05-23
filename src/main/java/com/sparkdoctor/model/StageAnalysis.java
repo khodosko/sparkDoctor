@@ -15,7 +15,11 @@ public record StageAnalysis(
         Long medianTaskShuffleReadBytes,
         Long p95TaskShuffleReadBytes,
         Long p99TaskShuffleReadBytes,
-        List<Long> taskShuffleReadBytes) {
+        List<Long> taskShuffleReadBytes,
+        long memoryBytesSpilled,
+        long diskBytesSpilled,
+        Long maxTaskMemoryBytesSpilled,
+        Long maxTaskDiskBytesSpilled) {
     public StageAnalysis {
         taskShuffleReadBytes = taskShuffleReadBytes == null ? List.of() : List.copyOf(taskShuffleReadBytes);
     }
@@ -43,6 +47,10 @@ public record StageAnalysis(
                 null,
                 null,
                 null,
-                List.of());
+                List.of(),
+                0L,
+                0L,
+                null,
+                null);
     }
 }

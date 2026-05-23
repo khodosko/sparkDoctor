@@ -117,6 +117,11 @@ public final class SparkEventLogParser {
                     stages.computeIfAbsent(stageId, StageAccumulator::new)
                             .addShuffleReadBytes(shuffleReadBytes);
                 }
+                TaskSpillMetrics spillMetrics = spillMetrics(event);
+                if (stageId != null && spillMetrics != null) {
+                    stages.computeIfAbsent(stageId, StageAccumulator::new)
+                            .addSpillBytes(spillMetrics.memoryBytesSpilled(), spillMetrics.diskBytesSpilled());
+                }
             }
         }
 
@@ -227,7 +232,24 @@ public final class SparkEventLogParser {
         return valueOrZero(localBytesRead) + valueOrZero(remoteBytesRead);
     }
 
+    private TaskSpillMetrics spillMetrics(JsonNode event) {
+        JsonNode taskMetrics = event.get("Task Metrics");
+        if (taskMetrics == null || taskMetrics.isNull()) {
+            return null;
+        }
+
+        Long memoryBytesSpilled = longOrNull(taskMetrics, "Memory Bytes Spilled");
+        Long diskBytesSpilled = longOrNull(taskMetrics, "Disk Bytes Spilled");
+        if (memoryBytesSpilled == null && diskBytesSpilled == null) {
+            return null;
+        }
+
+        return new TaskSpillMetrics(valueOrZero(memoryBytesSpilled), valueOrZero(diskBytesSpilled));
+    }
+
     private long valueOrZero(Long value) {
         return value == null ? 0L : value;
     }
+
+    private record TaskSpillMetrics(long memoryBytesSpilled, long diskBytesSpilled) {}
 }

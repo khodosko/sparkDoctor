@@ -43,7 +43,11 @@ final class AnalysisJsonWriterTest {
                         3500L,
                         5000L,
                         5000L,
-                        List.of(2000L, 5000L))),
+                        List.of(2000L, 5000L),
+                        300L,
+                        700L,
+                        200L,
+                        500L)),
                 List.of(new Bottleneck(
                         "task_duration_skew",
                         "medium",
@@ -87,6 +91,10 @@ final class AnalysisJsonWriterTest {
         assertEquals(2, json.path("stages").get(0).path("taskShuffleReadBytes").size());
         assertEquals(2000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(0).asLong());
         assertEquals(5000L, json.path("stages").get(0).path("taskShuffleReadBytes").get(1).asLong());
+        assertEquals(300L, json.path("stages").get(0).path("memoryBytesSpilled").asLong());
+        assertEquals(700L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(500L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());
