@@ -80,8 +80,11 @@ final class AnalyzeCommandTest {
 
         assertEquals(0, exitCode);
         Path analysisJson = outputDirectory.resolve("analysis.json");
+        Path recommendationsMarkdown = outputDirectory.resolve("recommendations.md");
         assertTrue(Files.exists(analysisJson));
+        assertTrue(Files.exists(recommendationsMarkdown));
         assertTrue(output.toString().contains("Analysis JSON: " + analysisJson));
+        assertTrue(output.toString().contains("Recommendations Markdown: " + recommendationsMarkdown));
 
         JsonNode json = objectMapper.readTree(analysisJson.toFile());
         assertEquals("app-20260515120000-0001", json.path("application").path("id").asText());
@@ -131,6 +134,7 @@ final class AnalyzeCommandTest {
         assertEquals(100L, json.path("stages").get(1).path("maxTaskDiskBytesSpilled").asLong());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
+        assertTrue(Files.readString(recommendationsMarkdown).contains("No recommendations generated."));
     }
 
     @Test
@@ -247,6 +251,12 @@ final class AnalyzeCommandTest {
         assertEquals("reduce-spill-pressure", json.path("recommendations").get(0).path("id").asText());
         assertEquals("spill_pressure", json.path("recommendations").get(0).path("relatedBottleneckType").asText());
         assertEquals(9, json.path("recommendations").get(0).path("stageId").asInt());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Reduce spill pressure"));
+        assertTrue(recommendationsMarkdown.contains("- Severity: medium"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 9"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: spill_pressure"));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.output.AnalysisJsonWriter;
+import com.sparkdoctor.output.RecommendationsMarkdownWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -23,6 +24,7 @@ import picocli.CommandLine.Spec;
 public final class AnalyzeCommand implements Callable<Integer> {
     private final SparkEventLogParser parser;
     private final AnalysisJsonWriter analysisJsonWriter;
+    private final RecommendationsMarkdownWriter recommendationsMarkdownWriter;
 
     @Spec
     private CommandSpec spec;
@@ -34,12 +36,16 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private Path outputDirectory = Path.of("sparkdoctor-report");
 
     public AnalyzeCommand() {
-        this(new SparkEventLogParser(), new AnalysisJsonWriter());
+        this(new SparkEventLogParser(), new AnalysisJsonWriter(), new RecommendationsMarkdownWriter());
     }
 
-    AnalyzeCommand(SparkEventLogParser parser, AnalysisJsonWriter analysisJsonWriter) {
+    AnalyzeCommand(
+            SparkEventLogParser parser,
+            AnalysisJsonWriter analysisJsonWriter,
+            RecommendationsMarkdownWriter recommendationsMarkdownWriter) {
         this.parser = parser;
         this.analysisJsonWriter = analysisJsonWriter;
+        this.recommendationsMarkdownWriter = recommendationsMarkdownWriter;
     }
 
     @Override
@@ -60,9 +66,12 @@ public final class AnalyzeCommand implements Callable<Integer> {
         }
 
         ApplicationSummary summary = parsedEventLog.applicationSummary();
+        AnalysisReport report = AnalysisReport.from(parsedEventLog);
         Path analysisPath;
+        Path recommendationsPath;
         try {
-            analysisPath = analysisJsonWriter.write(outputDirectory, AnalysisReport.from(parsedEventLog));
+            analysisPath = analysisJsonWriter.write(outputDirectory, report);
+            recommendationsPath = recommendationsMarkdownWriter.write(outputDirectory, report);
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
             err.printf("Failed to write analysis output: %s%n", exception.getMessage());
@@ -82,6 +91,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
         out.printf("Output directory: %s%n", outputDirectory);
         out.printf("Analysis JSON: %s%n", analysisPath);
+        out.printf("Recommendations Markdown: %s%n", recommendationsPath);
         return 0;
     }
 
