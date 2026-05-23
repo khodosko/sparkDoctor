@@ -256,6 +256,19 @@ gradle run --args="analyze src/test/resources/fixtures/shuffle-skewed-eventlog.j
 gradle run --args="analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report"
 ```
 
+## Contributing
+
+SparkDoctor is open source, and contributions are welcome.
+
+Before opening a pull request:
+
+- Add or update unit tests for every behavior change.
+- Run `gradle test`.
+- Keep changes focused and explain the Spark behavior being parsed, detected, or reported.
+- Do not weaken, skip, or delete existing tests to make a change pass.
+
+All contributions require maintainer review and approval before merge.
+
 ## Roadmap
 
 Near-term:
@@ -274,4 +287,4 @@ Longer-term:
 
 ## License
 
-License has not been selected yet.
+Apache License 2.0. See [LICENSE](LICENSE).
