@@ -56,6 +56,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsReductionForSpillPressure() {
+        Bottleneck bottleneck = new Bottleneck(
+                "spill_pressure",
+                "medium",
+                4,
+                "Stage 4 has spill pressure.",
+                Map.of("diskBytesSpilled", 314572800L));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("reduce-spill-pressure", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Reduce spill pressure", recommendation.title());
+        assertEquals("spill_pressure", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("joins and aggregations"));
+        assertTrue(recommendation.description().contains("shuffle partition counts"));
+    }
+
+    @Test
     void ignoresUnknownBottleneckTypes() {
         Bottleneck bottleneck = new Bottleneck(
                 "unknown",

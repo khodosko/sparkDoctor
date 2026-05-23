@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.analysis.RecommendationEngine;
 import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
+import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
@@ -30,6 +31,7 @@ public final class SparkEventLogParser {
     private final ObjectMapper objectMapper;
     private final TaskDurationSkewDetector taskDurationSkewDetector;
     private final ShufflePartitionSkewDetector shufflePartitionSkewDetector;
+    private final SpillPressureDetector spillPressureDetector;
     private final RecommendationEngine recommendationEngine;
 
     public SparkEventLogParser() {
@@ -38,6 +40,7 @@ public final class SparkEventLogParser {
                 new ObjectMapper(),
                 new TaskDurationSkewDetector(),
                 new ShufflePartitionSkewDetector(),
+                new SpillPressureDetector(),
                 new RecommendationEngine());
     }
 
@@ -46,11 +49,13 @@ public final class SparkEventLogParser {
             ObjectMapper objectMapper,
             TaskDurationSkewDetector taskDurationSkewDetector,
             ShufflePartitionSkewDetector shufflePartitionSkewDetector,
+            SpillPressureDetector spillPressureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
         this.objectMapper = objectMapper;
         this.taskDurationSkewDetector = taskDurationSkewDetector;
         this.shufflePartitionSkewDetector = shufflePartitionSkewDetector;
+        this.spillPressureDetector = spillPressureDetector;
         this.recommendationEngine = recommendationEngine;
     }
 
@@ -131,6 +136,7 @@ public final class SparkEventLogParser {
         List<Bottleneck> bottlenecks = new ArrayList<>();
         bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
+        bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),

@@ -213,6 +213,43 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesSpillPressureBottleneckForSpillHeavyFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("spill-heavy-report");
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/spill-heavy-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("spill_heavy_customer_etl", json.path("application").path("name").asText());
+        assertEquals(2, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(134217728L, json.path("stages").get(0).path("memoryBytesSpilled").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
+        assertEquals(67108864L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(209715200L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("spill_pressure", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(9, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(134217728L, json.path("bottlenecks").get(0).path("evidence").path("memoryBytesSpilled").asLong());
+        assertEquals(314572800L, json.path("bottlenecks").get(0).path("evidence").path("diskBytesSpilled").asLong());
+        assertEquals(
+                67108864L,
+                json.path("bottlenecks").get(0).path("evidence").path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(
+                209715200L,
+                json.path("bottlenecks").get(0).path("evidence").path("maxTaskDiskBytesSpilled").asLong());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("reduce-spill-pressure", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("spill_pressure", json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(9, json.path("recommendations").get(0).path("stageId").asInt());
+    }
+
+    @Test
     void analyzeReturnsErrorWhenAnalysisJsonCannotBeWritten() throws Exception {
         Path outputPathThatIsAFile = tempDir.resolve("report");
         Files.writeString(outputPathThatIsAFile, "not a directory");

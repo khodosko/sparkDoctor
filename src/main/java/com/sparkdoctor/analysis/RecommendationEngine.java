@@ -13,6 +13,8 @@ public final class RecommendationEngine {
                 recommendations.add(taskDurationSkewRecommendation(bottleneck));
             } else if ("shuffle_partition_skew".equals(bottleneck.type())) {
                 recommendations.add(shufflePartitionSkewRecommendation(bottleneck));
+            } else if ("spill_pressure".equals(bottleneck.type())) {
+                recommendations.add(spillPressureRecommendation(bottleneck));
             }
         }
 
@@ -40,6 +42,20 @@ public final class RecommendationEngine {
                         .formatted(bottleneck.stageId())
                         + "Enable or tune Spark AQE skew join handling, inspect skewed join keys, "
                         + "consider salting hot keys, repartition by a better key, or pre-aggregate before joins.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation spillPressureRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "reduce-spill-pressure",
+                bottleneck.severity(),
+                "Reduce spill pressure",
+                "Stage %d spilled a meaningful amount of data to memory or disk. "
+                        .formatted(bottleneck.stageId())
+                        + "Inspect joins and aggregations in this stage, reduce per-task partition size, "
+                        + "tune shuffle partition counts, and consider executor memory changes only after "
+                        + "confirming the stage is doing necessary work.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

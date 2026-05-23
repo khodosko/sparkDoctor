@@ -1,0 +1,6 @@
+{"Event":"SparkListenerApplicationStart","App Name":"spill_heavy_customer_etl","App ID":"app-spill-heavy-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":0,"Submission Time":1778846401000,"Stage IDs":[9]}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":9,"Stage Name":"spill-heavy aggregate","Number of Tasks":2}}
+{"Event":"SparkListenerTaskEnd","Stage ID":9,"Task Type":"ResultTask","Task Info":{"Task ID":300,"Index":0,"Launch Time":0,"Finish Time":2000},"Task Metrics":{"Memory Bytes Spilled":67108864,"Disk Bytes Spilled":104857600,"Shuffle Read Metrics":{"Local Bytes Read":1000,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerTaskEnd","Stage ID":9,"Task Type":"ResultTask","Task Info":{"Task ID":301,"Index":1,"Launch Time":0,"Finish Time":3000},"Task Metrics":{"Memory Bytes Spilled":67108864,"Disk Bytes Spilled":209715200,"Shuffle Read Metrics":{"Local Bytes Read":1000,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}

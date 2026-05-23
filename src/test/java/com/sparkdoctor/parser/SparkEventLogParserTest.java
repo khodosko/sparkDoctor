@@ -278,6 +278,38 @@ final class SparkEventLogParserTest {
         assertEquals("mitigate-shuffle-partition-skew", parsedEventLog.recommendations().get(0).id());
     }
 
+    @Test
+    void parsesSpillPressureFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/spill-heavy-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-spill-heavy-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("spill_heavy_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(2, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(9, parsedEventLog.stages().get(0).id());
+        assertEquals("spill-heavy aggregate", parsedEventLog.stages().get(0).name());
+        assertEquals(2, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(134217728L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertEquals(67108864L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertEquals(209715200L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("spill_pressure", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(9, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(134217728L, parsedEventLog.bottlenecks().get(0).evidence().get("memoryBytesSpilled"));
+        assertEquals(314572800L, parsedEventLog.bottlenecks().get(0).evidence().get("diskBytesSpilled"));
+        assertEquals(67108864L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskMemoryBytesSpilled"));
+        assertEquals(209715200L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskDiskBytesSpilled"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("reduce-spill-pressure", parsedEventLog.recommendations().get(0).id());
+    }
+
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {
         return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"
