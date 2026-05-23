@@ -73,8 +73,8 @@ final class RecommendationEngineTest {
         assertEquals("Reduce spill pressure", recommendation.title());
         assertEquals("spill_pressure", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
-        assertTrue(recommendation.description().contains("joins and aggregations"));
-        assertTrue(recommendation.description().contains("shuffle partition counts"));
+        assertTrue(recommendation.description().contains("shuffle, sort, join, or aggregation"));
+        assertTrue(recommendation.description().contains("partition sizing and skew"));
     }
 
     @Test

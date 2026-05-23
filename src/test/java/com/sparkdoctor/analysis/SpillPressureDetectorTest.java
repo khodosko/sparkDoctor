@@ -74,6 +74,33 @@ final class SpillPressureDetectorTest {
     }
 
     @Test
+    void detectsHighSpillPressureWhenMaxTaskDiskSpillExceedsHighThreshold() {
+        StageAnalysis stage = new StageAnalysis(
+                7,
+                "single skewed spill task",
+                2,
+                2,
+                1000L,
+                2000L,
+                1500L,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                128L * 1024L * 1024L,
+                700L * 1024L * 1024L,
+                96L * 1024L * 1024L,
+                600L * 1024L * 1024L);
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
+        assertEquals(1, bottlenecks.size());
+        assertEquals("high", bottlenecks.get(0).severity());
+    }
+
+    @Test
     void detectsSpillPressureWhenMemorySpillExceedsThresholdWithoutDiskSpill() {
         StageAnalysis stage = new StageAnalysis(
                 7,
@@ -101,7 +128,7 @@ final class SpillPressureDetectorTest {
     }
 
     @Test
-    void ignoresSmallStagesToAvoidNoisySpillFindings() {
+    void detectsSingleTaskSpillPressureAtHigherDiskThreshold() {
         StageAnalysis stage = new StageAnalysis(
                 7,
                 "single task spill",
@@ -120,6 +147,60 @@ final class SpillPressureDetectorTest {
                 2L * 1024L * 1024L * 1024L,
                 2L * 1024L * 1024L * 1024L,
                 2L * 1024L * 1024L * 1024L);
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
+        assertEquals(1, bottlenecks.size());
+        assertEquals("high", bottlenecks.get(0).severity());
+    }
+
+    @Test
+    void detectsSingleTaskSpillPressureAtHigherMemoryThreshold() {
+        StageAnalysis stage = new StageAnalysis(
+                7,
+                "single task memory spill",
+                1,
+                1,
+                1000L,
+                2000L,
+                1500L,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                4L * 1024L * 1024L * 1024L,
+                0L,
+                4L * 1024L * 1024L * 1024L,
+                0L);
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
+        assertEquals(1, bottlenecks.size());
+        assertEquals("medium", bottlenecks.get(0).severity());
+    }
+
+    @Test
+    void ignoresSingleTaskSpillBelowHigherThresholds() {
+        StageAnalysis stage = new StageAnalysis(
+                7,
+                "single task modest spill",
+                1,
+                1,
+                1000L,
+                2000L,
+                1500L,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                2L * 1024L * 1024L * 1024L,
+                512L * 1024L * 1024L,
+                2L * 1024L * 1024L * 1024L,
+                512L * 1024L * 1024L);
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 

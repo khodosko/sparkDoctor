@@ -7,10 +7,13 @@ import java.util.List;
 import java.util.Map;
 
 public final class SpillPressureDetector {
-    private static final int MIN_COMPLETED_TASKS = 2;
-    private static final long MEMORY_SPILL_THRESHOLD_BYTES = 1024L * 1024L * 1024L;
-    private static final long DISK_SPILL_THRESHOLD_BYTES = 256L * 1024L * 1024L;
-    private static final long HIGH_DISK_SPILL_THRESHOLD_BYTES = 1024L * 1024L * 1024L;
+    private static final long MIB = 1024L * 1024L;
+    private static final long GIB = 1024L * MIB;
+    private static final long MEDIUM_DISK_SPILL_BYTES = 256L * MIB;
+    private static final long HIGH_DISK_SPILL_BYTES = GIB;
+    private static final long MEDIUM_MEMORY_SPILL_BYTES = GIB;
+    private static final long SINGLE_TASK_HIGH_MEMORY_SPILL_BYTES = 4L * GIB;
+    private static final long HIGH_MAX_TASK_DISK_SPILL_BYTES = 512L * MIB;
 
     public List<Bottleneck> detect(List<StageAnalysis> stages) {
         List<Bottleneck> bottlenecks = new ArrayList<>();
@@ -27,8 +30,10 @@ public final class SpillPressureDetector {
                                 "diskBytesSpilled", stage.diskBytesSpilled(),
                                 "maxTaskMemoryBytesSpilled", valueOrZero(stage.maxTaskMemoryBytesSpilled()),
                                 "maxTaskDiskBytesSpilled", valueOrZero(stage.maxTaskDiskBytesSpilled()),
-                                "memorySpillThresholdBytes", MEMORY_SPILL_THRESHOLD_BYTES,
-                                "diskSpillThresholdBytes", DISK_SPILL_THRESHOLD_BYTES)));
+                                "mediumMemorySpillThresholdBytes", MEDIUM_MEMORY_SPILL_BYTES,
+                                "mediumDiskSpillThresholdBytes", MEDIUM_DISK_SPILL_BYTES,
+                                "highDiskSpillThresholdBytes", HIGH_DISK_SPILL_BYTES,
+                                "highMaxTaskDiskSpillThresholdBytes", HIGH_MAX_TASK_DISK_SPILL_BYTES)));
             }
         }
 
@@ -36,16 +41,25 @@ public final class SpillPressureDetector {
     }
 
     private boolean hasSpillPressure(StageAnalysis stage) {
-        if (stage.completedTasks() < MIN_COMPLETED_TASKS) {
-            return false;
+        if (stage.completedTasks() == 1) {
+            return stage.diskBytesSpilled() >= HIGH_DISK_SPILL_BYTES
+                    || stage.memoryBytesSpilled() >= SINGLE_TASK_HIGH_MEMORY_SPILL_BYTES;
+        }
+        if (stage.completedTasks() >= 2) {
+            return stage.diskBytesSpilled() >= MEDIUM_DISK_SPILL_BYTES
+                    || stage.memoryBytesSpilled() >= MEDIUM_MEMORY_SPILL_BYTES;
         }
 
-        return stage.diskBytesSpilled() >= DISK_SPILL_THRESHOLD_BYTES
-                || stage.memoryBytesSpilled() >= MEMORY_SPILL_THRESHOLD_BYTES;
+        return false;
     }
 
     private String severity(StageAnalysis stage) {
-        return stage.diskBytesSpilled() >= HIGH_DISK_SPILL_THRESHOLD_BYTES ? "high" : "medium";
+        if (stage.diskBytesSpilled() >= HIGH_DISK_SPILL_BYTES
+                || valueOrZero(stage.maxTaskDiskBytesSpilled()) >= HIGH_MAX_TASK_DISK_SPILL_BYTES) {
+            return "high";
+        }
+
+        return "medium";
     }
 
     private long valueOrZero(Long value) {

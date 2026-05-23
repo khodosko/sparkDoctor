@@ -51,11 +51,13 @@ public final class RecommendationEngine {
                 "reduce-spill-pressure",
                 bottleneck.severity(),
                 "Reduce spill pressure",
-                "Stage %d spilled a meaningful amount of data to memory or disk. "
+                "Stage %d spilled a significant amount of data during task execution. "
                         .formatted(bottleneck.stageId())
-                        + "Inspect joins and aggregations in this stage, reduce per-task partition size, "
-                        + "tune shuffle partition counts, and consider executor memory changes only after "
-                        + "confirming the stage is doing necessary work.",
+                        + "Spill usually indicates memory pressure during shuffle, sort, join, or aggregation. "
+                        + "Check for skew by comparing max task duration and spill against typical tasks, "
+                        + "increase shuffle parallelism if tasks are too large, reduce per-task data before "
+                        + "wide operations, and review joins, aggregations, and sorts creating large shuffle state. "
+                        + "Consider executor memory changes only after confirming partition sizing and skew.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }
