@@ -1,0 +1,277 @@
+# SparkDoctor
+
+SparkDoctor is a local-first CLI for analyzing Apache Spark event logs.
+
+Spark jobs often get slow or expensive because of a few recurring problems: skewed tasks, skewed shuffle partitions, memory pressure, disk spill, and retries that hide the real shape of the workload. SparkDoctor reads Spark event logs and turns those raw execution metrics into a small set of bottlenecks and recommendations.
+
+The goal is straightforward: run one command against a Spark event log and get useful evidence about what likely made the job slow.
+
+## Current Status
+
+SparkDoctor is early-stage and focused on offline event log analysis.
+
+It currently generates:
+
+- `analysis.json`: machine-readable analysis output
+- `recommendations.md`: human-readable recommendation summary
+- terminal summary output
+
+Supported inputs:
+
+- plain Spark event log files
+- gzip-compressed event logs
+- local directories containing event logs
+
+## What SparkDoctor Analyzes
+
+SparkDoctor parses Spark listener events and builds stage-level metrics from successful task attempts.
+
+Current parsed events include:
+
+- `SparkListenerApplicationStart`
+- `SparkListenerApplicationEnd`
+- `SparkListenerJobStart`
+- `SparkListenerStageSubmitted`
+- `SparkListenerTaskEnd`
+
+Current stage metrics include:
+
+- completed task count
+- min, max, and average task duration
+- total shuffle read bytes
+- max task shuffle read bytes
+- median, p95, and p99 task shuffle read bytes
+- per-task shuffle read distribution
+- total memory bytes spilled
+- total disk bytes spilled
+- max task memory bytes spilled
+- max task disk bytes spilled
+
+Failed task attempts are ignored for stage metric aggregation. Successful task attempts are deduplicated by stage ID, stage attempt ID, and task index so retries and speculative attempts do not inflate duration, shuffle, or spill metrics.
+
+## Current Bottleneck Rules
+
+### Task Duration Skew
+
+Reports `task_duration_skew` when:
+
+- stage has at least 10 completed tasks
+- max task duration is at least 3x the average task duration
+
+Example:
+
+```text
+avgTaskDurationMillis = 1800
+maxTaskDurationMillis = 9000
+skewRatio = 5.0
+```
+
+This usually means one or more tasks are much slower than the rest. Possible causes include data skew, uneven partition sizes, executor imbalance, spills, or locality problems.
+
+### Shuffle Partition Skew
+
+Reports `shuffle_partition_skew` when:
+
+- stage has at least 10 shuffle-reading tasks
+- max task shuffle read bytes is greater than median task shuffle read bytes times 5
+- max task shuffle read bytes is greater than 256 MiB
+
+Example:
+
+```text
+medianTaskShuffleReadBytes = 10 MiB
+maxTaskShuffleReadBytes = 300 MiB
+skewRatio = 30.0
+```
+
+This is based on the same general idea as Spark AQE skew handling: a partition is suspicious when it is both much larger than the median and large in absolute terms.
+
+### Spill Pressure
+
+Reports `spill_pressure` when a stage spills enough data to suggest memory pressure during shuffle, sort, join, or aggregation.
+
+For stages with at least 2 completed tasks:
+
+- medium if total disk spill is at least 256 MiB
+- medium if total memory spill is at least 1 GiB
+
+For single-task stages:
+
+- report only severe cases:
+  - total disk spill is at least 1 GiB
+  - or total memory spill is at least 4 GiB
+
+Severity is `high` when:
+
+- total disk spill is at least 1 GiB
+- or max task disk spill is at least 512 MiB
+
+Example:
+
+```text
+diskBytesSpilled = 300 MiB
+memoryBytesSpilled = 128 MiB
+severity = medium
+```
+
+## Requirements
+
+- Java 17
+- Gradle
+
+Check your setup:
+
+```bash
+java -version
+gradle -v
+```
+
+## Install
+
+Clone the repository:
+
+```bash
+git clone https://github.com/khodosko/sparkDoctor.git
+cd sparkDoctor
+```
+
+Run tests:
+
+```bash
+gradle test
+```
+
+## Usage
+
+Analyze a Spark event log:
+
+```bash
+gradle run --args="analyze path/to/eventlog --out ./sparkdoctor-report"
+```
+
+Example with the included fixture:
+
+```bash
+gradle run --args="analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report"
+```
+
+Output files:
+
+```text
+sparkdoctor-report/
+  analysis.json
+  recommendations.md
+```
+
+## Example Terminal Output
+
+```text
+SparkDoctor analyzed src/test/resources/fixtures/spill-heavy-eventlog.json
+Application: spill_heavy_customer_etl
+Application ID: app-spill-heavy-0001
+Duration: 10000 ms
+Jobs: 1
+Stages: 1
+Tasks: 2
+Issues detected: 1
+Recommendations: 1
+Top bottlenecks:
+- [medium] spill_pressure (stage 9): Stage 9 has spill pressure.
+Output directory: ./sparkdoctor-report
+Analysis JSON: ./sparkdoctor-report/analysis.json
+Recommendations Markdown: ./sparkdoctor-report/recommendations.md
+```
+
+## Example `analysis.json`
+
+```json
+{
+  "summary": {
+    "jobs": 1,
+    "stages": 1,
+    "tasks": 2,
+    "issuesDetected": 1
+  },
+  "stages": [
+    {
+      "id": 9,
+      "name": "spill-heavy aggregate",
+      "completedTasks": 2,
+      "shuffleReadBytes": 2000,
+      "memoryBytesSpilled": 134217728,
+      "diskBytesSpilled": 314572800,
+      "maxTaskDiskBytesSpilled": 209715200
+    }
+  ],
+  "bottlenecks": [
+    {
+      "type": "spill_pressure",
+      "severity": "medium",
+      "stageId": 9,
+      "message": "Stage 9 has spill pressure."
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "reduce-spill-pressure",
+      "severity": "medium",
+      "title": "Reduce spill pressure",
+      "relatedBottleneckType": "spill_pressure",
+      "stageId": 9
+    }
+  ]
+}
+```
+
+## How To Read The Output
+
+Start with the terminal summary:
+
+- `Issues detected` tells you how many bottlenecks were found.
+- `Recommendations` tells you how many actions SparkDoctor generated.
+- `Top bottlenecks` shows the first few issues with severity and stage ID.
+
+Then open `recommendations.md` for a readable explanation.
+
+Use `analysis.json` when you want the raw evidence:
+
+- look at `stages` for task duration, shuffle, and spill metrics
+- look at `bottlenecks` for detected issues and evidence thresholds
+- look at `recommendations` for suggested next actions
+
+## Development
+
+Run tests:
+
+```bash
+gradle test
+```
+
+Run the CLI against fixtures:
+
+```bash
+gradle run --args="analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report"
+gradle run --args="analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report"
+gradle run --args="analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report"
+gradle run --args="analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report"
+```
+
+## Roadmap
+
+Near-term:
+
+- add a real Spark-generated fixture
+- parse stage completed and job end events
+- detect low parallelism and partition sizing problems
+- generate a local HTML report
+
+Longer-term:
+
+- local event log watcher mode
+- richer SQL execution analysis
+- executor imbalance detection
+- run-to-run comparison
+
+## License
+
+License has not been selected yet.
