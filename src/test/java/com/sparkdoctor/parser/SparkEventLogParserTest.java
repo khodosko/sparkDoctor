@@ -2,6 +2,7 @@ package com.sparkdoctor.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
@@ -333,6 +334,27 @@ final class SparkEventLogParserTest {
         assertEquals(209715200L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskDiskBytesSpilled"));
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("reduce-spill-pressure", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
+    void parsesRealSparkGeneratedFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/real-spark-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("local-sparkdoctor-fixture", parsedEventLog.applicationSummary().appId());
+        assertEquals("sparkdoctor_real_fixture", parsedEventLog.applicationSummary().appName());
+        assertEquals(4, parsedEventLog.analysisSummary().jobs());
+        assertEquals(4, parsedEventLog.analysisSummary().stages());
+        assertEquals(17, parsedEventLog.analysisSummary().tasks());
+        assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(4, parsedEventLog.stages().size());
+        assertEquals(0, parsedEventLog.bottlenecks().size());
+        assertEquals(0, parsedEventLog.recommendations().size());
+        assertTrue(parsedEventLog.applicationSummary().durationMillis().orElseThrow() > 0);
+        assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> stage.completedTasks() == 8));
+        assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> stage.shuffleReadBytes() > 0));
+        assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> !stage.taskShuffleReadBytes().isEmpty()));
     }
 
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {

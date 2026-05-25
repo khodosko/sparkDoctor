@@ -272,7 +272,7 @@ SparkDoctor is not a complete Spark UI replacement yet.
 
 Current limitations:
 
-- Most test coverage uses synthetic event logs.
+- Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
 - SQL execution plan analysis is not implemented yet.
 - Stage completed and job end events are not fully modeled yet.
 - Executor imbalance detection is not implemented yet.
@@ -305,6 +305,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
 ```
 
 For development, `gradle run` still works:
@@ -312,6 +313,20 @@ For development, `gradle run` still works:
 ```bash
 gradle run --args="analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report"
 ```
+
+Generate a real Spark event log fixture:
+
+```bash
+bash scripts/generate-real-spark-eventlog-fixture.sh
+```
+
+This requires `spark-submit` on `PATH`. The script runs a small local Spark job with event logging enabled and writes:
+
+```text
+src/test/resources/fixtures/real-spark-eventlog.json
+```
+
+Spark 4 may write Zstandard-compressed event logs. The script decompresses those logs with `zstd` when needed and sanitizes machine-specific paths, local application IDs, and user names before writing the fixture.
 
 ## Contributing
 
@@ -330,7 +345,6 @@ All contributions require maintainer review and approval before merge.
 
 Near-term:
 
-- add a real Spark-generated fixture
 - parse stage completed and job end events
 - detect low parallelism and partition sizing problems
 - generate a local HTML report

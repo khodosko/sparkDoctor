@@ -140,6 +140,40 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesSummaryForRealSparkGeneratedFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("real-spark-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/real-spark-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: sparkdoctor_real_fixture"));
+        assertTrue(output.toString().contains("Application ID: local-sparkdoctor-fixture"));
+        assertTrue(output.toString().contains("Jobs: 4"));
+        assertTrue(output.toString().contains("Stages: 4"));
+        assertTrue(output.toString().contains("Tasks: 17"));
+        assertTrue(output.toString().contains("Issues detected: 0"));
+        assertTrue(output.toString().contains("Recommendations: 0"));
+
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("local-sparkdoctor-fixture", json.path("application").path("id").asText());
+        assertEquals("sparkdoctor_real_fixture", json.path("application").path("name").asText());
+        assertEquals(4, json.path("summary").path("jobs").asInt());
+        assertEquals(4, json.path("summary").path("stages").asInt());
+        assertEquals(17, json.path("summary").path("tasks").asInt());
+        assertEquals(0, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(4, json.path("stages").size());
+        assertEquals(0, json.path("bottlenecks").size());
+        assertEquals(0, json.path("recommendations").size());
+        assertTrue(Files.readString(outputDirectory.resolve("recommendations.md")).contains("No recommendations generated."));
+    }
+
+    @Test
     void analyzeWritesTaskDurationSkewBottleneckForSkewedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("skewed-report");
         CommandLine commandLine = new CommandLine(new AnalyzeCommand());
