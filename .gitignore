@@ -8,3 +8,5 @@ build/
 out/
 sparkdoctor-report/
 *.class
+__pycache__/
+*.py[cod]
