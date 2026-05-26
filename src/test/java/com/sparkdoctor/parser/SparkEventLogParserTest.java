@@ -377,6 +377,39 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesFailedJobAndStageFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/failed-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-failed-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("failed_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(0, parsedEventLog.analysisSummary().jobsCompleted());
+        assertEquals(1, parsedEventLog.analysisSummary().jobsFailed());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(0, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(1, parsedEventLog.analysisSummary().stagesFailed());
+        assertEquals(0, parsedEventLog.analysisSummary().tasks());
+        assertEquals(2, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.failedJobs().size());
+        assertEquals(12, parsedEventLog.failedJobs().get(0).id());
+        assertEquals("JobFailed", parsedEventLog.failedJobs().get(0).result());
+        assertEquals(1, parsedEventLog.failedStages().size());
+        assertEquals(13, parsedEventLog.failedStages().get(0).id());
+        assertEquals("failed shuffle", parsedEventLog.failedStages().get(0).name());
+        assertEquals(
+                "Fetch failed: executor lost during shuffle read",
+                parsedEventLog.failedStages().get(0).failureReason());
+        assertEquals(2, parsedEventLog.bottlenecks().size());
+        assertEquals("failed_job", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("failed_stage", parsedEventLog.bottlenecks().get(1).type());
+        assertEquals(2, parsedEventLog.recommendations().size());
+        assertEquals("investigate-failed-job", parsedEventLog.recommendations().get(0).id());
+        assertEquals("investigate-failed-stage", parsedEventLog.recommendations().get(1).id());
+    }
+
+    @Test
     void parsesRealSparkGeneratedFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/real-spark-eventlog.json");
 

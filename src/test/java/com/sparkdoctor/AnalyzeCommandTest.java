@@ -312,6 +312,52 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("failed-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/failed-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: failed_customer_etl"));
+        assertTrue(output.toString().contains("Jobs failed: 1"));
+        assertTrue(output.toString().contains("Stages failed: 1"));
+        assertTrue(output.toString().contains("Issues detected: 2"));
+        assertTrue(output.toString().contains("Recommendations: 2"));
+        assertTrue(output.toString().contains("- [high] failed_job (application): Job 12 failed."));
+        assertTrue(output.toString().contains("- [high] failed_stage (stage 13): Stage 13 failed."));
+
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("failed_customer_etl", json.path("application").path("name").asText());
+        assertEquals(1, json.path("summary").path("jobsFailed").asInt());
+        assertEquals(1, json.path("summary").path("stagesFailed").asInt());
+        assertEquals(2, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(1, json.path("failedJobs").size());
+        assertEquals(12, json.path("failedJobs").get(0).path("id").asInt());
+        assertEquals("JobFailed", json.path("failedJobs").get(0).path("result").asText());
+        assertEquals(1, json.path("failedStages").size());
+        assertEquals(13, json.path("failedStages").get(0).path("id").asInt());
+        assertEquals(
+                "Fetch failed: executor lost during shuffle read",
+                json.path("failedStages").get(0).path("failureReason").asText());
+        assertEquals("failed_job", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("failed_stage", json.path("bottlenecks").get(1).path("type").asText());
+        assertEquals("investigate-failed-job", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("investigate-failed-stage", json.path("recommendations").get(1).path("id").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate failed Spark job"));
+        assertTrue(recommendationsMarkdown.contains("- Scope: application"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate failed Spark stage"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 13"));
+    }
+
+    @Test
     void analyzeReturnsErrorWhenAnalysisJsonCannotBeWritten() throws Exception {
         Path outputPathThatIsAFile = tempDir.resolve("report");
         Files.writeString(outputPathThatIsAFile, "not a directory");

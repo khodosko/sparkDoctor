@@ -1,0 +1,6 @@
+{"Event":"SparkListenerApplicationStart","App Name":"failed_customer_etl","App ID":"app-failed-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":12,"Submission Time":1778846401000,"Stage IDs":[13]}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":13,"Stage Name":"failed shuffle","Number of Tasks":2}}
+{"Event":"SparkListenerStageCompleted","Stage Info":{"Stage ID":13,"Stage Name":"failed shuffle","Number of Tasks":2,"Failure Reason":"Fetch failed: executor lost during shuffle read"}}
+{"Event":"SparkListenerJobEnd","Job ID":12,"Completion Time":1778846405000,"Job Result":{"Result":"JobFailed"}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}
