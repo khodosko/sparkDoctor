@@ -48,6 +48,34 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesCompletedAndFailedJobAndStageCountsFromLines() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":1}",
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":2}",
+                "{\"Event\":\"SparkListenerJobEnd\",\"Job ID\":1,\"Job Result\":{\"Result\":\"JobSucceeded\"}}",
+                "{\"Event\":\"SparkListenerJobEnd\",\"Job ID\":2,\"Job Result\":{\"Result\":\"JobFailed\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":10,\"Stage Name\":\"ok\",\"Number of Tasks\":2}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":11,\"Stage Name\":\"failed\",\"Number of Tasks\":3}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":10,\"Stage Name\":\"ok\",\"Number of Tasks\":2}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":11,\"Stage Name\":\"failed\",\"Number of Tasks\":3,"
+                        + "\"Failure Reason\":\"Fetch failed\"}}"));
+
+        assertEquals(2, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().jobsCompleted());
+        assertEquals(1, parsedEventLog.analysisSummary().jobsFailed());
+        assertEquals(2, parsedEventLog.analysisSummary().stages());
+        assertEquals(1, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(1, parsedEventLog.analysisSummary().stagesFailed());
+        assertEquals(2, parsedEventLog.stages().size());
+        assertEquals("ok", parsedEventLog.stages().get(0).name());
+        assertEquals("failed", parsedEventLog.stages().get(1).name());
+    }
+
+    @Test
     void parsesStageDetailsFromStageSubmittedEvents() throws Exception {
         ParsedEventLog parsedEventLog = parser.parse(List.of(
                 "{\"Event\":\"SparkListenerStageSubmitted\","
@@ -345,7 +373,11 @@ final class SparkEventLogParserTest {
         assertEquals("local-sparkdoctor-fixture", parsedEventLog.applicationSummary().appId());
         assertEquals("sparkdoctor_real_fixture", parsedEventLog.applicationSummary().appName());
         assertEquals(4, parsedEventLog.analysisSummary().jobs());
+        assertEquals(4, parsedEventLog.analysisSummary().jobsCompleted());
+        assertEquals(0, parsedEventLog.analysisSummary().jobsFailed());
         assertEquals(4, parsedEventLog.analysisSummary().stages());
+        assertEquals(4, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(0, parsedEventLog.analysisSummary().stagesFailed());
         assertEquals(17, parsedEventLog.analysisSummary().tasks());
         assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
         assertEquals(4, parsedEventLog.stages().size());

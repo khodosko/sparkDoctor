@@ -59,7 +59,11 @@ public record AnalysisReport(
                 application,
                 new AnalysisSummary(
                         analysisSummary.jobs(),
+                        analysisSummary.jobsCompleted(),
+                        analysisSummary.jobsFailed(),
                         analysisSummary.stages(),
+                        analysisSummary.stagesCompleted(),
+                        analysisSummary.stagesFailed(),
                         analysisSummary.tasks(),
                         bottlenecks.size()),
                 stages,

@@ -38,12 +38,16 @@ Current parsed events include:
 - `SparkListenerApplicationStart`
 - `SparkListenerApplicationEnd`
 - `SparkListenerJobStart`
+- `SparkListenerJobEnd`
 - `SparkListenerStageSubmitted`
+- `SparkListenerStageCompleted`
 - `SparkListenerTaskEnd`
 
-Current stage metrics include:
+Current summary and stage metrics include:
 
 - completed task count
+- completed and failed job counts
+- completed and failed stage counts
 - min, max, and average task duration
 - total shuffle read bytes
 - max task shuffle read bytes
@@ -222,7 +226,11 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
 {
   "summary": {
     "jobs": 1,
+    "jobsCompleted": 0,
+    "jobsFailed": 0,
     "stages": 1,
+    "stagesCompleted": 0,
+    "stagesFailed": 0,
     "tasks": 2,
     "issuesDetected": 1
   },
@@ -281,7 +289,6 @@ Current limitations:
 
 - Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
 - SQL execution plan analysis is not implemented yet.
-- Stage completed and job end events are not fully modeled yet.
 - Executor imbalance detection is not implemented yet.
 - Low parallelism and partition sizing detectors are not implemented yet.
 - Detector thresholds are conservative and will change as more real workloads are tested.
@@ -352,7 +359,6 @@ All contributions require maintainer review and approval before merge.
 
 Near-term:
 
-- parse stage completed and job end events
 - detect low parallelism and partition sizing problems
 - generate a local HTML report
 

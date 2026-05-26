@@ -20,7 +20,11 @@ final class AnalysisReportTest {
         assertEquals(2500L, report.application().endTimeMillis());
         assertEquals(1500L, report.application().durationMillis());
         assertEquals(0, report.summary().jobs());
+        assertEquals(0, report.summary().jobsCompleted());
+        assertEquals(0, report.summary().jobsFailed());
         assertEquals(0, report.summary().stages());
+        assertEquals(0, report.summary().stagesCompleted());
+        assertEquals(0, report.summary().stagesFailed());
         assertEquals(0, report.summary().tasks());
         assertEquals(0, report.summary().issuesDetected());
         assertTrue(report.stages().isEmpty());
@@ -51,7 +55,11 @@ final class AnalysisReportTest {
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
         assertEquals(1, report.summary().jobs());
+        assertEquals(0, report.summary().jobsCompleted());
+        assertEquals(0, report.summary().jobsFailed());
         assertEquals(2, report.summary().stages());
+        assertEquals(0, report.summary().stagesCompleted());
+        assertEquals(0, report.summary().stagesFailed());
         assertEquals(3, report.summary().tasks());
         assertEquals(1, report.summary().issuesDetected());
         assertEquals(1, report.stages().size());

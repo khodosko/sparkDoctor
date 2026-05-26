@@ -50,6 +50,8 @@ final class RecommendationsMarkdownWriterTest {
         String markdown = Files.readString(recommendationsPath);
         assertTrue(markdown.contains("# SparkDoctor Recommendations"));
         assertTrue(markdown.contains("- Name: daily_job"));
+        assertTrue(markdown.contains("- Jobs completed: 0"));
+        assertTrue(markdown.contains("- Stages completed: 0"));
         assertTrue(markdown.contains("- Issues detected: 1"));
         assertTrue(markdown.contains("### Reduce spill pressure"));
         assertTrue(markdown.contains("- Severity: medium"));

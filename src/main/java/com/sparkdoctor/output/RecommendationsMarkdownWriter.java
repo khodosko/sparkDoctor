@@ -25,7 +25,11 @@ public final class RecommendationsMarkdownWriter {
         markdown.append("- Duration: ").append(display(report.application().durationMillis())).append(" ms\n\n");
         markdown.append("## Summary\n\n");
         markdown.append("- Jobs: ").append(report.summary().jobs()).append("\n");
+        markdown.append("- Jobs completed: ").append(report.summary().jobsCompleted()).append("\n");
+        markdown.append("- Jobs failed: ").append(report.summary().jobsFailed()).append("\n");
         markdown.append("- Stages: ").append(report.summary().stages()).append("\n");
+        markdown.append("- Stages completed: ").append(report.summary().stagesCompleted()).append("\n");
+        markdown.append("- Stages failed: ").append(report.summary().stagesFailed()).append("\n");
         markdown.append("- Tasks: ").append(report.summary().tasks()).append("\n");
         markdown.append("- Issues detected: ").append(report.summary().issuesDetected()).append("\n\n");
 

@@ -26,7 +26,9 @@ public final class SparkEventLogParser {
     private static final String APPLICATION_START = "SparkListenerApplicationStart";
     private static final String APPLICATION_END = "SparkListenerApplicationEnd";
     private static final String JOB_START = "SparkListenerJobStart";
+    private static final String JOB_END = "SparkListenerJobEnd";
     private static final String STAGE_SUBMITTED = "SparkListenerStageSubmitted";
+    private static final String STAGE_COMPLETED = "SparkListenerStageCompleted";
     private static final String TASK_END = "SparkListenerTaskEnd";
 
     private final EventLogReader eventLogReader;
@@ -87,7 +89,11 @@ public final class SparkEventLogParser {
         Long startTimeMillis = null;
         Long endTimeMillis = null;
         Set<Integer> jobIds = new HashSet<>();
+        Set<Integer> completedJobIds = new HashSet<>();
+        Set<Integer> failedJobIds = new HashSet<>();
         Set<Integer> stageIds = new HashSet<>();
+        Set<Integer> completedStageIds = new HashSet<>();
+        Set<Integer> failedStageIds = new HashSet<>();
         Set<String> taskKeys = new HashSet<>();
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
@@ -109,6 +115,16 @@ public final class SparkEventLogParser {
                 if (jobId != null) {
                     jobIds.add(jobId);
                 }
+            } else if (JOB_END.equals(eventType)) {
+                Integer jobId = intOrNull(event, "Job ID");
+                if (jobId != null) {
+                    jobIds.add(jobId);
+                    if (isSuccessfulJobEnd(event)) {
+                        completedJobIds.add(jobId);
+                    } else {
+                        failedJobIds.add(jobId);
+                    }
+                }
             } else if (STAGE_SUBMITTED.equals(eventType)) {
                 JsonNode stageInfo = event.get("Stage Info");
                 Integer stageId = stageId(event, stageInfo);
@@ -118,6 +134,21 @@ public final class SparkEventLogParser {
                             .updateDetails(
                                     textOrNull(stageInfo, "Stage Name"),
                                     intOrNull(stageInfo, "Number of Tasks"));
+                }
+            } else if (STAGE_COMPLETED.equals(eventType)) {
+                JsonNode stageInfo = event.get("Stage Info");
+                Integer stageId = stageId(event, stageInfo);
+                if (stageId != null) {
+                    stageIds.add(stageId);
+                    stages.computeIfAbsent(stageId, StageAccumulator::new)
+                            .updateDetails(
+                                    textOrNull(stageInfo, "Stage Name"),
+                                    intOrNull(stageInfo, "Number of Tasks"));
+                    if (isSuccessfulStageCompleted(stageInfo)) {
+                        completedStageIds.add(stageId);
+                    } else {
+                        failedStageIds.add(stageId);
+                    }
                 }
             } else if (TASK_END.equals(eventType)) {
                 Integer stageId = stageId(event, event.get("Stage Info"));
@@ -169,7 +200,15 @@ public final class SparkEventLogParser {
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
-                new AnalysisSummary(jobIds.size(), stageIds.size(), taskKeys.size(), bottlenecks.size()),
+                new AnalysisSummary(
+                        jobIds.size(),
+                        completedJobIds.size(),
+                        failedJobIds.size(),
+                        stageIds.size(),
+                        completedStageIds.size(),
+                        failedStageIds.size(),
+                        taskKeys.size(),
+                        bottlenecks.size()),
                 stageAnalyses,
                 bottlenecks,
                 recommendationEngine.recommend(bottlenecks));
@@ -276,6 +315,19 @@ public final class SparkEventLogParser {
 
         String reason = textOrNull(taskEndReason, "Reason");
         return reason == null || "Success".equals(reason);
+    }
+
+    private boolean isSuccessfulJobEnd(JsonNode event) {
+        JsonNode jobResult = event.get("Job Result");
+        if (jobResult == null || jobResult.isNull()) {
+            return false;
+        }
+
+        return "JobSucceeded".equals(textOrNull(jobResult, "Result"));
+    }
+
+    private boolean isSuccessfulStageCompleted(JsonNode stageInfo) {
+        return textOrNull(stageInfo, "Failure Reason") == null;
     }
 
     private String taskKey(Integer stageId, Integer stageAttemptId, Long taskIndex, Long taskId) {

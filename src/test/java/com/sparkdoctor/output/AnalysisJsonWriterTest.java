@@ -73,7 +73,11 @@ final class AnalysisJsonWriterTest {
         assertEquals("daily_job", json.path("application").path("name").asText());
         assertEquals(1500L, json.path("application").path("durationMillis").asLong());
         assertEquals(1, json.path("summary").path("jobs").asInt());
+        assertEquals(0, json.path("summary").path("jobsCompleted").asInt());
+        assertEquals(0, json.path("summary").path("jobsFailed").asInt());
         assertEquals(2, json.path("summary").path("stages").asInt());
+        assertEquals(0, json.path("summary").path("stagesCompleted").asInt());
+        assertEquals(0, json.path("summary").path("stagesFailed").asInt());
         assertEquals(3, json.path("summary").path("tasks").asInt());
         assertEquals(1, json.path("summary").path("issuesDetected").asInt());
         assertEquals(4, json.path("stages").get(0).path("id").asInt());

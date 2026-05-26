@@ -155,7 +155,11 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Application: sparkdoctor_real_fixture"));
         assertTrue(output.toString().contains("Application ID: local-sparkdoctor-fixture"));
         assertTrue(output.toString().contains("Jobs: 4"));
+        assertTrue(output.toString().contains("Jobs completed: 4"));
+        assertTrue(output.toString().contains("Jobs failed: 0"));
         assertTrue(output.toString().contains("Stages: 4"));
+        assertTrue(output.toString().contains("Stages completed: 4"));
+        assertTrue(output.toString().contains("Stages failed: 0"));
         assertTrue(output.toString().contains("Tasks: 17"));
         assertTrue(output.toString().contains("Issues detected: 0"));
         assertTrue(output.toString().contains("Recommendations: 0"));
@@ -164,7 +168,11 @@ final class AnalyzeCommandTest {
         assertEquals("local-sparkdoctor-fixture", json.path("application").path("id").asText());
         assertEquals("sparkdoctor_real_fixture", json.path("application").path("name").asText());
         assertEquals(4, json.path("summary").path("jobs").asInt());
+        assertEquals(4, json.path("summary").path("jobsCompleted").asInt());
+        assertEquals(0, json.path("summary").path("jobsFailed").asInt());
         assertEquals(4, json.path("summary").path("stages").asInt());
+        assertEquals(4, json.path("summary").path("stagesCompleted").asInt());
+        assertEquals(0, json.path("summary").path("stagesFailed").asInt());
         assertEquals(17, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
         assertEquals(4, json.path("stages").size());

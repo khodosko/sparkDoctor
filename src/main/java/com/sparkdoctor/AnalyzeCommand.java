@@ -87,7 +87,11 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Application ID: %s%n", display(summary.appId()));
         out.printf("Duration: %s ms%n", durationDisplay);
         out.printf("Jobs: %d%n", parsedEventLog.analysisSummary().jobs());
+        out.printf("Jobs completed: %d%n", parsedEventLog.analysisSummary().jobsCompleted());
+        out.printf("Jobs failed: %d%n", parsedEventLog.analysisSummary().jobsFailed());
         out.printf("Stages: %d%n", parsedEventLog.analysisSummary().stages());
+        out.printf("Stages completed: %d%n", parsedEventLog.analysisSummary().stagesCompleted());
+        out.printf("Stages failed: %d%n", parsedEventLog.analysisSummary().stagesFailed());
         out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
         out.printf("Issues detected: %d%n", parsedEventLog.analysisSummary().issuesDetected());
         out.printf("Recommendations: %d%n", parsedEventLog.recommendations().size());
