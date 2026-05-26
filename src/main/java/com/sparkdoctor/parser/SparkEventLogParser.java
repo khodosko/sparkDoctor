@@ -2,6 +2,7 @@ package com.sparkdoctor.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparkdoctor.analysis.FailureDetector;
 import com.sparkdoctor.analysis.RecommendationEngine;
 import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
@@ -9,6 +10,8 @@ import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
+import com.sparkdoctor.model.FailedJob;
+import com.sparkdoctor.model.FailedStage;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
@@ -36,6 +39,7 @@ public final class SparkEventLogParser {
     private final TaskDurationSkewDetector taskDurationSkewDetector;
     private final ShufflePartitionSkewDetector shufflePartitionSkewDetector;
     private final SpillPressureDetector spillPressureDetector;
+    private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
     public SparkEventLogParser() {
@@ -45,6 +49,7 @@ public final class SparkEventLogParser {
                 new TaskDurationSkewDetector(),
                 new ShufflePartitionSkewDetector(),
                 new SpillPressureDetector(),
+                new FailureDetector(),
                 new RecommendationEngine());
     }
 
@@ -54,12 +59,14 @@ public final class SparkEventLogParser {
             TaskDurationSkewDetector taskDurationSkewDetector,
             ShufflePartitionSkewDetector shufflePartitionSkewDetector,
             SpillPressureDetector spillPressureDetector,
+            FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
         this.objectMapper = objectMapper;
         this.taskDurationSkewDetector = taskDurationSkewDetector;
         this.shufflePartitionSkewDetector = shufflePartitionSkewDetector;
         this.spillPressureDetector = spillPressureDetector;
+        this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
 
@@ -94,6 +101,8 @@ public final class SparkEventLogParser {
         Set<Integer> stageIds = new HashSet<>();
         Set<Integer> completedStageIds = new HashSet<>();
         Set<Integer> failedStageIds = new HashSet<>();
+        Map<Integer, FailedJob> failedJobs = new LinkedHashMap<>();
+        Map<Integer, FailedStage> failedStages = new LinkedHashMap<>();
         Set<String> taskKeys = new HashSet<>();
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
@@ -121,8 +130,12 @@ public final class SparkEventLogParser {
                     jobIds.add(jobId);
                     if (isSuccessfulJobEnd(event)) {
                         completedJobIds.add(jobId);
+                        failedJobIds.remove(jobId);
+                        failedJobs.remove(jobId);
                     } else {
+                        completedJobIds.remove(jobId);
                         failedJobIds.add(jobId);
+                        failedJobs.put(jobId, new FailedJob(jobId, jobResult(event)));
                     }
                 }
             } else if (STAGE_SUBMITTED.equals(eventType)) {
@@ -146,8 +159,17 @@ public final class SparkEventLogParser {
                                     intOrNull(stageInfo, "Number of Tasks"));
                     if (isSuccessfulStageCompleted(stageInfo)) {
                         completedStageIds.add(stageId);
+                        failedStageIds.remove(stageId);
+                        failedStages.remove(stageId);
                     } else {
+                        completedStageIds.remove(stageId);
                         failedStageIds.add(stageId);
+                        failedStages.put(
+                                stageId,
+                                new FailedStage(
+                                        stageId,
+                                        textOrNull(stageInfo, "Stage Name"),
+                                        textOrNull(stageInfo, "Failure Reason")));
                     }
                 }
             } else if (TASK_END.equals(eventType)) {
@@ -197,6 +219,9 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
+        List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
+        List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
+        bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
@@ -210,6 +235,8 @@ public final class SparkEventLogParser {
                         taskKeys.size(),
                         bottlenecks.size()),
                 stageAnalyses,
+                failedJobDetails,
+                failedStageDetails,
                 bottlenecks,
                 recommendationEngine.recommend(bottlenecks));
     }
@@ -324,6 +351,11 @@ public final class SparkEventLogParser {
         }
 
         return "JobSucceeded".equals(textOrNull(jobResult, "Result"));
+    }
+
+    private String jobResult(JsonNode event) {
+        JsonNode jobResult = event.get("Job Result");
+        return textOrNull(jobResult, "Result");
     }
 
     private boolean isSuccessfulStageCompleted(JsonNode stageInfo) {

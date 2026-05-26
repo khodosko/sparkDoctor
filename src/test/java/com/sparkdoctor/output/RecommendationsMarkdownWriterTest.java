@@ -71,4 +71,32 @@ final class RecommendationsMarkdownWriterTest {
         String markdown = Files.readString(recommendationsPath);
         assertTrue(markdown.contains("No recommendations generated."));
     }
+
+    @Test
+    void writesApplicationScopeForApplicationLevelRecommendations() throws Exception {
+        AnalysisReport report = AnalysisReport.from(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 0, 1, 1, 0, 0, 0, 1),
+                List.of(),
+                List.of(new Bottleneck(
+                        "failed_job",
+                        "high",
+                        -1,
+                        "Job 3 failed.",
+                        Map.of("jobId", 3))),
+                List.of(new Recommendation(
+                        "investigate-failed-job",
+                        "high",
+                        "Investigate failed Spark job",
+                        "Inspect driver logs.",
+                        "failed_job",
+                        -1)));
+        Path outputDirectory = tempDir.resolve("application-report");
+
+        Path recommendationsPath = writer.write(outputDirectory, report);
+
+        String markdown = Files.readString(recommendationsPath);
+        assertTrue(markdown.contains("- Scope: application"));
+        assertTrue(markdown.contains("- Related bottleneck: failed_job"));
+    }
 }

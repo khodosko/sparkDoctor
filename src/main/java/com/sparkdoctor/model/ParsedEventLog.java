@@ -6,5 +6,16 @@ public record ParsedEventLog(
         ApplicationSummary applicationSummary,
         AnalysisSummary analysisSummary,
         List<StageAnalysis> stages,
+        List<FailedJob> failedJobs,
+        List<FailedStage> failedStages,
         List<Bottleneck> bottlenecks,
-        List<Recommendation> recommendations) {}
+        List<Recommendation> recommendations) {
+    public ParsedEventLog(
+            ApplicationSummary applicationSummary,
+            AnalysisSummary analysisSummary,
+            List<StageAnalysis> stages,
+            List<Bottleneck> bottlenecks,
+            List<Recommendation> recommendations) {
+        this(applicationSummary, analysisSummary, stages, List.of(), List.of(), bottlenecks, recommendations);
+    }
+}

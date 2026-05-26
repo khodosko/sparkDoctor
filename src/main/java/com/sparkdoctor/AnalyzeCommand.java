@@ -100,10 +100,10 @@ public final class AnalyzeCommand implements Callable<Integer> {
             parsedEventLog.bottlenecks().stream()
                     .limit(3)
                     .forEach(bottleneck -> out.printf(
-                            "- [%s] %s (stage %d): %s%n",
+                            "- [%s] %s (%s): %s%n",
                             bottleneck.severity(),
                             bottleneck.type(),
-                            bottleneck.stageId(),
+                            bottleneckLocation(bottleneck.stageId()),
                             bottleneck.message()));
         }
         out.printf("Output directory: %s%n", outputDirectory);
@@ -118,5 +118,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
         }
 
         return value;
+    }
+
+    private String bottleneckLocation(int stageId) {
+        return stageId < 0 ? "application" : "stage " + stageId;
     }
 }

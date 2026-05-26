@@ -78,6 +78,50 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForFailedJob() {
+        Bottleneck bottleneck = new Bottleneck(
+                "failed_job",
+                "high",
+                -1,
+                "Job 3 failed.",
+                Map.of("jobId", 3));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-failed-job", recommendation.id());
+        assertEquals("high", recommendation.severity());
+        assertEquals("Investigate failed Spark job", recommendation.title());
+        assertEquals("failed_job", recommendation.relatedBottleneckType());
+        assertEquals(-1, recommendation.stageId());
+        assertTrue(recommendation.description().contains("driver logs"));
+        assertTrue(recommendation.description().contains("shuffle fetch failures"));
+    }
+
+    @Test
+    void recommendsInvestigationForFailedStage() {
+        Bottleneck bottleneck = new Bottleneck(
+                "failed_stage",
+                "high",
+                8,
+                "Stage 8 failed.",
+                Map.of("failureReason", "Fetch failed"));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-failed-stage", recommendation.id());
+        assertEquals("high", recommendation.severity());
+        assertEquals("Investigate failed Spark stage", recommendation.title());
+        assertEquals("failed_stage", recommendation.relatedBottleneckType());
+        assertEquals(8, recommendation.stageId());
+        assertTrue(recommendation.description().contains("stage failure reason"));
+        assertTrue(recommendation.description().contains("out-of-memory"));
+    }
+
+    @Test
     void ignoresUnknownBottleneckTypes() {
         Bottleneck bottleneck = new Bottleneck(
                 "unknown",

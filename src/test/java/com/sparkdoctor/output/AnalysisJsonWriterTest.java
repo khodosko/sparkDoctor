@@ -99,6 +99,8 @@ final class AnalysisJsonWriterTest {
         assertEquals(700L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
         assertEquals(200L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
         assertEquals(500L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
+        assertEquals(0, json.path("failedJobs").size());
+        assertEquals(0, json.path("failedStages").size());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());

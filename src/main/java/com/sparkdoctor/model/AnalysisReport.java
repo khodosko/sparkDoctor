@@ -6,6 +6,8 @@ public record AnalysisReport(
         ApplicationAnalysis application,
         AnalysisSummary summary,
         List<StageAnalysis> stages,
+        List<FailedJob> failedJobs,
+        List<FailedStage> failedStages,
         List<Bottleneck> bottlenecks,
         List<Recommendation> recommendations) {
     public static AnalysisReport from(ParsedEventLog parsedEventLog) {
@@ -13,6 +15,8 @@ public record AnalysisReport(
                 parsedEventLog.applicationSummary(),
                 parsedEventLog.analysisSummary(),
                 parsedEventLog.stages(),
+                parsedEventLog.failedJobs(),
+                parsedEventLog.failedStages(),
                 parsedEventLog.bottlenecks(),
                 parsedEventLog.recommendations());
     }
@@ -46,6 +50,24 @@ public record AnalysisReport(
             List<StageAnalysis> stages,
             List<Bottleneck> bottlenecks,
             List<Recommendation> recommendations) {
+        return from(
+                applicationSummary,
+                analysisSummary,
+                stages,
+                List.of(),
+                List.of(),
+                bottlenecks,
+                recommendations);
+    }
+
+    public static AnalysisReport from(
+            ApplicationSummary applicationSummary,
+            AnalysisSummary analysisSummary,
+            List<StageAnalysis> stages,
+            List<FailedJob> failedJobs,
+            List<FailedStage> failedStages,
+            List<Bottleneck> bottlenecks,
+            List<Recommendation> recommendations) {
         ApplicationAnalysis application = new ApplicationAnalysis(
                 applicationSummary.appId(),
                 applicationSummary.appName(),
@@ -67,6 +89,8 @@ public record AnalysisReport(
                         analysisSummary.tasks(),
                         bottlenecks.size()),
                 stages,
+                failedJobs,
+                failedStages,
                 bottlenecks,
                 recommendations);
     }

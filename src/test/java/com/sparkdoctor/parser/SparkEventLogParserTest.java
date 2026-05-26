@@ -70,9 +70,21 @@ final class SparkEventLogParserTest {
         assertEquals(2, parsedEventLog.analysisSummary().stages());
         assertEquals(1, parsedEventLog.analysisSummary().stagesCompleted());
         assertEquals(1, parsedEventLog.analysisSummary().stagesFailed());
+        assertEquals(2, parsedEventLog.analysisSummary().issuesDetected());
         assertEquals(2, parsedEventLog.stages().size());
         assertEquals("ok", parsedEventLog.stages().get(0).name());
         assertEquals("failed", parsedEventLog.stages().get(1).name());
+        assertEquals(1, parsedEventLog.failedJobs().size());
+        assertEquals(2, parsedEventLog.failedJobs().get(0).id());
+        assertEquals("JobFailed", parsedEventLog.failedJobs().get(0).result());
+        assertEquals(1, parsedEventLog.failedStages().size());
+        assertEquals(11, parsedEventLog.failedStages().get(0).id());
+        assertEquals("failed", parsedEventLog.failedStages().get(0).name());
+        assertEquals("Fetch failed", parsedEventLog.failedStages().get(0).failureReason());
+        assertEquals(2, parsedEventLog.bottlenecks().size());
+        assertEquals("failed_job", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("failed_stage", parsedEventLog.bottlenecks().get(1).type());
+        assertEquals(2, parsedEventLog.recommendations().size());
     }
 
     @Test
@@ -381,6 +393,8 @@ final class SparkEventLogParserTest {
         assertEquals(17, parsedEventLog.analysisSummary().tasks());
         assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
         assertEquals(4, parsedEventLog.stages().size());
+        assertEquals(0, parsedEventLog.failedJobs().size());
+        assertEquals(0, parsedEventLog.failedStages().size());
         assertEquals(0, parsedEventLog.bottlenecks().size());
         assertEquals(0, parsedEventLog.recommendations().size());
         assertTrue(parsedEventLog.applicationSummary().durationMillis().orElseThrow() > 0);

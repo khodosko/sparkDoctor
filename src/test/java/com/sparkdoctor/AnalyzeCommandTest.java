@@ -176,6 +176,8 @@ final class AnalyzeCommandTest {
         assertEquals(17, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
         assertEquals(4, json.path("stages").size());
+        assertEquals(0, json.path("failedJobs").size());
+        assertEquals(0, json.path("failedStages").size());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
         assertTrue(Files.readString(outputDirectory.resolve("recommendations.md")).contains("No recommendations generated."));

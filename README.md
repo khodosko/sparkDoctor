@@ -48,6 +48,8 @@ Current summary and stage metrics include:
 - completed task count
 - completed and failed job counts
 - completed and failed stage counts
+- failed job details
+- failed stage details and failure reasons
 - min, max, and average task duration
 - total shuffle read bytes
 - max task shuffle read bytes
@@ -123,6 +125,20 @@ Example:
 diskBytesSpilled = 300 MiB
 memoryBytesSpilled = 128 MiB
 severity = medium
+```
+
+### Failed Jobs And Stages
+
+Reports `failed_job` or `failed_stage` when Spark listener completion events show a failed job or stage.
+
+Severity is `high` because a failed job or stage usually means the Spark application did not finish the intended work or paid retry/recovery cost.
+
+Example:
+
+```text
+jobsFailed = 1
+stagesFailed = 1
+failureReason = Fetch failed
 ```
 
 ## Requirements
@@ -245,6 +261,8 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
       "maxTaskDiskBytesSpilled": 209715200
     }
   ],
+  "failedJobs": [],
+  "failedStages": [],
   "bottlenecks": [
     {
       "type": "spill_pressure",

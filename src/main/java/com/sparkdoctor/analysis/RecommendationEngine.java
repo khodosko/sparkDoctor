@@ -15,6 +15,10 @@ public final class RecommendationEngine {
                 recommendations.add(shufflePartitionSkewRecommendation(bottleneck));
             } else if ("spill_pressure".equals(bottleneck.type())) {
                 recommendations.add(spillPressureRecommendation(bottleneck));
+            } else if ("failed_job".equals(bottleneck.type())) {
+                recommendations.add(failedJobRecommendation(bottleneck));
+            } else if ("failed_stage".equals(bottleneck.type())) {
+                recommendations.add(failedStageRecommendation(bottleneck));
             }
         }
 
@@ -58,6 +62,30 @@ public final class RecommendationEngine {
                         + "increase shuffle parallelism if tasks are too large, reduce per-task data before "
                         + "wide operations, and review joins, aggregations, and sorts creating large shuffle state. "
                         + "Consider executor memory changes only after confirming partition sizing and skew.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation failedJobRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-failed-job",
+                bottleneck.severity(),
+                "Investigate failed Spark job",
+                "A Spark job failed before the application completed successfully. "
+                        + "Inspect the Spark event log, driver logs, and failed stage details for executor loss, "
+                        + "shuffle fetch failures, task exceptions, or resource exhaustion.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation failedStageRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-failed-stage",
+                bottleneck.severity(),
+                "Investigate failed Spark stage",
+                "Stage %d failed. ".formatted(bottleneck.stageId())
+                        + "Start with the stage failure reason and failed task logs, then check for shuffle fetch "
+                        + "failures, executor loss, out-of-memory errors, bad input records, or repeated task failures.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

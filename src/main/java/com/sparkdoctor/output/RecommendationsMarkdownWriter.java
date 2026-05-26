@@ -43,7 +43,11 @@ public final class RecommendationsMarkdownWriter {
         for (Recommendation recommendation : report.recommendations()) {
             markdown.append("### ").append(recommendation.title()).append("\n\n");
             markdown.append("- Severity: ").append(recommendation.severity()).append("\n");
-            markdown.append("- Stage ID: ").append(recommendation.stageId()).append("\n");
+            if (recommendation.stageId() < 0) {
+                markdown.append("- Scope: application\n");
+            } else {
+                markdown.append("- Stage ID: ").append(recommendation.stageId()).append("\n");
+            }
             markdown.append("- Related bottleneck: ")
                     .append(recommendation.relatedBottleneckType())
                     .append("\n\n");
