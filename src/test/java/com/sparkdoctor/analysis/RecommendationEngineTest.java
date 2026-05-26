@@ -56,6 +56,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsReductionForOversizedShufflePartitions() {
+        Bottleneck bottleneck = new Bottleneck(
+                "oversized_shuffle_partitions",
+                "medium",
+                4,
+                "Stage 4 has oversized shuffle partitions.",
+                Map.of("p95TaskShuffleReadBytes", 314572800L));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("reduce-oversized-shuffle-partitions", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Reduce oversized shuffle partitions", recommendation.title());
+        assertEquals("oversized_shuffle_partitions", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("Increase shuffle parallelism"));
+        assertTrue(recommendation.description().contains("partition sizing"));
+    }
+
+    @Test
     void recommendsReductionForSpillPressure() {
         Bottleneck bottleneck = new Bottleneck(
                 "spill_pressure",

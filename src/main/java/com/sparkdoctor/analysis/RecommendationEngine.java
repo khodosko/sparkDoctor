@@ -13,6 +13,8 @@ public final class RecommendationEngine {
                 recommendations.add(taskDurationSkewRecommendation(bottleneck));
             } else if ("shuffle_partition_skew".equals(bottleneck.type())) {
                 recommendations.add(shufflePartitionSkewRecommendation(bottleneck));
+            } else if ("oversized_shuffle_partitions".equals(bottleneck.type())) {
+                recommendations.add(oversizedShufflePartitionsRecommendation(bottleneck));
             } else if ("spill_pressure".equals(bottleneck.type())) {
                 recommendations.add(spillPressureRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
@@ -46,6 +48,21 @@ public final class RecommendationEngine {
                         .formatted(bottleneck.stageId())
                         + "Enable or tune Spark AQE skew join handling, inspect skewed join keys, "
                         + "consider salting hot keys, repartition by a better key, or pre-aggregate before joins.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation oversizedShufflePartitionsRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "reduce-oversized-shuffle-partitions",
+                bottleneck.severity(),
+                "Reduce oversized shuffle partitions",
+                "Stage %d has shuffle-reading tasks processing large partitions. "
+                        .formatted(bottleneck.stageId())
+                        + "Increase shuffle parallelism, repartition before expensive wide operations, "
+                        + "reduce data before joins or aggregations, and review filters or projections that could "
+                        + "run before the shuffle. Treat executor memory increases as a secondary option after "
+                        + "confirming partition sizing is appropriate.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

@@ -1,0 +1,8 @@
+{"Event":"SparkListenerApplicationStart","App Name":"oversized_shuffle_customer_etl","App ID":"app-oversized-shuffle-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":0,"Submission Time":1778846401000,"Stage IDs":[10]}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":10,"Stage Name":"wide shuffle","Number of Tasks":4}}
+{"Event":"SparkListenerTaskEnd","Stage ID":10,"Task Type":"ResultTask","Task Info":{"Task ID":400,"Index":0,"Launch Time":0,"Finish Time":4000},"Task Metrics":{"Shuffle Read Metrics":{"Local Bytes Read":314572800,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerTaskEnd","Stage ID":10,"Task Type":"ResultTask","Task Info":{"Task ID":401,"Index":1,"Launch Time":0,"Finish Time":4200},"Task Metrics":{"Shuffle Read Metrics":{"Local Bytes Read":314572800,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerTaskEnd","Stage ID":10,"Task Type":"ResultTask","Task Info":{"Task ID":402,"Index":2,"Launch Time":0,"Finish Time":4300},"Task Metrics":{"Shuffle Read Metrics":{"Local Bytes Read":314572800,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerTaskEnd","Stage ID":10,"Task Type":"ResultTask","Task Info":{"Task ID":403,"Index":3,"Launch Time":0,"Finish Time":4500},"Task Metrics":{"Shuffle Read Metrics":{"Local Bytes Read":314572800,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}

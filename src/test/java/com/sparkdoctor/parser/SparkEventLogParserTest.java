@@ -345,6 +345,35 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesOversizedShufflePartitionsFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/oversized-shuffle-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-oversized-shuffle-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("oversized_shuffle_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(4, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(10, parsedEventLog.stages().get(0).id());
+        assertEquals("wide shuffle", parsedEventLog.stages().get(0).name());
+        assertEquals(4, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1258291200L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("oversized_shuffle_partitions", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(10, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(314572800L, parsedEventLog.bottlenecks().get(0).evidence().get("p95TaskShuffleReadBytes"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("reduce-oversized-shuffle-partitions", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
     void parsesSpillPressureFromFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/spill-heavy-eventlog.json");
 

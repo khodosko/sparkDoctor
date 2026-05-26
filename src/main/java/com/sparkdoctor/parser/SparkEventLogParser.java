@@ -3,6 +3,7 @@ package com.sparkdoctor.parser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.analysis.FailureDetector;
+import com.sparkdoctor.analysis.OversizedShufflePartitionDetector;
 import com.sparkdoctor.analysis.RecommendationEngine;
 import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
@@ -38,6 +39,7 @@ public final class SparkEventLogParser {
     private final ObjectMapper objectMapper;
     private final TaskDurationSkewDetector taskDurationSkewDetector;
     private final ShufflePartitionSkewDetector shufflePartitionSkewDetector;
+    private final OversizedShufflePartitionDetector oversizedShufflePartitionDetector;
     private final SpillPressureDetector spillPressureDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
@@ -48,6 +50,7 @@ public final class SparkEventLogParser {
                 new ObjectMapper(),
                 new TaskDurationSkewDetector(),
                 new ShufflePartitionSkewDetector(),
+                new OversizedShufflePartitionDetector(),
                 new SpillPressureDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
@@ -58,6 +61,7 @@ public final class SparkEventLogParser {
             ObjectMapper objectMapper,
             TaskDurationSkewDetector taskDurationSkewDetector,
             ShufflePartitionSkewDetector shufflePartitionSkewDetector,
+            OversizedShufflePartitionDetector oversizedShufflePartitionDetector,
             SpillPressureDetector spillPressureDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
@@ -65,6 +69,7 @@ public final class SparkEventLogParser {
         this.objectMapper = objectMapper;
         this.taskDurationSkewDetector = taskDurationSkewDetector;
         this.shufflePartitionSkewDetector = shufflePartitionSkewDetector;
+        this.oversizedShufflePartitionDetector = oversizedShufflePartitionDetector;
         this.spillPressureDetector = spillPressureDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
@@ -218,6 +223,7 @@ public final class SparkEventLogParser {
         List<Bottleneck> bottlenecks = new ArrayList<>();
         bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
+        bottlenecks.addAll(oversizedShufflePartitionDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());

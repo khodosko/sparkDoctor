@@ -99,6 +99,32 @@ skewRatio = 30.0
 
 This is based on the same general idea as Spark AQE skew handling: a partition is suspicious when it is both much larger than the median and large in absolute terms.
 
+### Oversized Shuffle Partitions
+
+Reports `oversized_shuffle_partitions` when shuffle-reading tasks are processing large partitions even if the stage is not skewed.
+
+This is different from `shuffle_partition_skew`: skew means one or a few partitions are much larger than typical tasks, while oversized partitions means typical shuffle partitions are already large.
+
+Reports when:
+
+- stage has at least 2 shuffle-reading tasks
+- p95 task shuffle read bytes is at least 256 MiB
+- or max task shuffle read bytes is at least 2 GiB
+- and the stage does not look like shuffle partition skew
+
+Severity is `high` when:
+
+- p95 task shuffle read bytes is at least 1 GiB
+- or max task shuffle read bytes is at least 2 GiB
+
+Example:
+
+```text
+p95TaskShuffleReadBytes = 300 MiB
+maxTaskShuffleReadBytes = 300 MiB
+severity = medium
+```
+
 ### Spill Pressure
 
 Reports `spill_pressure` when a stage spills enough data to suggest memory pressure during shuffle, sort, join, or aggregation.
@@ -336,6 +362,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/oversized-shuffle-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
