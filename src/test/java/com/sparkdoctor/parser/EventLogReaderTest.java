@@ -2,14 +2,17 @@ package com.sparkdoctor.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.github.luben.zstd.ZstdOutputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
+import net.jpountz.lz4.LZ4BlockOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.xerial.snappy.SnappyOutputStream;
 
 final class EventLogReaderTest {
     @TempDir
@@ -40,6 +43,42 @@ final class EventLogReaderTest {
     }
 
     @Test
+    void readsLinesFromZstandardFile() throws Exception {
+        Path eventLog = tempDir.resolve("eventlog.json.zstd");
+        try (OutputStream outputStream = new ZstdOutputStream(Files.newOutputStream(eventLog))) {
+            outputStream.write("zstd-first\nzstd-second\n".getBytes(StandardCharsets.UTF_8));
+        }
+
+        List<String> lines = reader.readLines(eventLog);
+
+        assertEquals(List.of("zstd-first", "zstd-second"), lines);
+    }
+
+    @Test
+    void readsLinesFromLz4File() throws Exception {
+        Path eventLog = tempDir.resolve("eventlog.json.lz4");
+        try (OutputStream outputStream = new LZ4BlockOutputStream(Files.newOutputStream(eventLog))) {
+            outputStream.write("lz4-first\nlz4-second\n".getBytes(StandardCharsets.UTF_8));
+        }
+
+        List<String> lines = reader.readLines(eventLog);
+
+        assertEquals(List.of("lz4-first", "lz4-second"), lines);
+    }
+
+    @Test
+    void readsLinesFromSnappyFile() throws Exception {
+        Path eventLog = tempDir.resolve("eventlog.json.snappy");
+        try (OutputStream outputStream = new SnappyOutputStream(Files.newOutputStream(eventLog))) {
+            outputStream.write("snappy-first\nsnappy-second\n".getBytes(StandardCharsets.UTF_8));
+        }
+
+        List<String> lines = reader.readLines(eventLog);
+
+        assertEquals(List.of("snappy-first", "snappy-second"), lines);
+    }
+
+    @Test
     void readsDirectoryFilesInStablePathOrder() throws Exception {
         Files.writeString(tempDir.resolve("part-00002"), "second\n");
         Files.writeString(tempDir.resolve("part-00001"), "first\n");
@@ -48,5 +87,17 @@ final class EventLogReaderTest {
 
         assertEquals(List.of("first", "second"), lines);
     }
-}
 
+    @Test
+    void streamsDirectoryFilesInStablePathOrder() throws Exception {
+        Files.writeString(tempDir.resolve("part-00002"), "second\n");
+        Files.writeString(tempDir.resolve("part-00001"), "first\n");
+
+        List<String> lines;
+        try (var stream = reader.lines(tempDir)) {
+            lines = stream.toList();
+        }
+
+        assertEquals(List.of("first", "second"), lines);
+    }
+}

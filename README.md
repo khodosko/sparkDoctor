@@ -22,6 +22,9 @@ Supported inputs:
 
 - plain Spark event log files
 - gzip-compressed event logs
+- Zstandard-compressed event logs with `.zstd` or `.zst` extensions
+- LZ4-compressed event logs with `.lz4` extensions
+- Snappy-compressed event logs with `.snappy` extensions
 - local directories containing event logs
 
 ## What SparkDoctor Analyzes

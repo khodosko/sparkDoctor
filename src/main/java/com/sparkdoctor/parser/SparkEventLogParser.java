@@ -12,6 +12,7 @@ import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public final class SparkEventLogParser {
     private static final String APPLICATION_START = "SparkListenerApplicationStart";
@@ -60,7 +62,7 @@ public final class SparkEventLogParser {
     }
 
     public ApplicationSummary parseApplicationSummary(Path eventLogPath) throws IOException {
-        return parseApplicationSummary(eventLogReader.readLines(eventLogPath));
+        return parse(eventLogPath).applicationSummary();
     }
 
     public ApplicationSummary parseApplicationSummary(List<String> eventLines) throws IOException {
@@ -68,10 +70,18 @@ public final class SparkEventLogParser {
     }
 
     public ParsedEventLog parse(Path eventLogPath) throws IOException {
-        return parse(eventLogReader.readLines(eventLogPath));
+        try (Stream<String> lines = eventLogReader.lines(eventLogPath)) {
+            return parse(lines);
+        } catch (UncheckedIOException exception) {
+            throw exception.getCause();
+        }
     }
 
     public ParsedEventLog parse(List<String> eventLines) throws IOException {
+        return parse(eventLines.stream());
+    }
+
+    public ParsedEventLog parse(Stream<String> eventLines) throws IOException {
         String appId = null;
         String appName = null;
         Long startTimeMillis = null;
@@ -82,7 +92,9 @@ public final class SparkEventLogParser {
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
 
-        for (String eventLine : eventLines) {
+        var iterator = eventLines.iterator();
+        while (iterator.hasNext()) {
+            String eventLine = iterator.next();
             JsonNode event = objectMapper.readTree(eventLine);
             String eventType = event.path("Event").asText();
 
