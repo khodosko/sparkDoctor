@@ -376,17 +376,7 @@ All contributions require maintainer review and approval before merge.
 
 ## Roadmap
 
-Near-term:
-
-- detect low parallelism and partition sizing problems
-- generate a local HTML report
-
-Longer-term:
-
-- local event log watcher mode
-- richer SQL execution analysis
-- executor imbalance detection
-- run-to-run comparison
+See [ROADMAP.md](ROADMAP.md) for the open-source CLI roadmap.
 
 ## License
 
