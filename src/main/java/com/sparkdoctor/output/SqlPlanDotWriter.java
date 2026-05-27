@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SqlPlanDotWriter {
+    private static final int MAX_METRICS_PER_NODE = 5;
+
     public List<Path> write(Path outputDirectory, AnalysisReport report) throws IOException {
         Files.createDirectories(outputDirectory);
         List<Path> dotPaths = new ArrayList<>();
@@ -71,11 +73,45 @@ public final class SqlPlanDotWriter {
     private String label(JsonNode sparkPlanInfo) {
         String nodeName = textOrUnknown(sparkPlanInfo, "nodeName");
         String simpleString = textOrNull(sparkPlanInfo, "simpleString");
-        if (simpleString == null || simpleString.equals(nodeName)) {
-            return nodeName;
+        StringBuilder label = new StringBuilder(nodeName);
+        if (simpleString != null && !simpleString.equals(nodeName)) {
+            label.append("\n").append(simpleString);
         }
 
-        return nodeName + "\n" + simpleString;
+        List<String> metricNames = metricNames(sparkPlanInfo);
+        if (!metricNames.isEmpty()) {
+            label.append("\n\nmetrics:");
+            for (String metricName : metricNames) {
+                label.append("\n- ").append(metricName);
+            }
+        }
+
+        return label.toString();
+    }
+
+    private List<String> metricNames(JsonNode sparkPlanInfo) {
+        JsonNode metrics = sparkPlanInfo.get("metrics");
+        if (metrics == null || !metrics.isArray() || metrics.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> metricNames = new ArrayList<>();
+        for (JsonNode metric : metrics) {
+            String metricName = textOrNull(metric, "name");
+            if (metricName == null || metricName.isBlank()) {
+                continue;
+            }
+            metricNames.add(metricName);
+            if (metricNames.size() == MAX_METRICS_PER_NODE) {
+                break;
+            }
+        }
+
+        if (metrics.size() > MAX_METRICS_PER_NODE) {
+            metricNames.add("+" + (metrics.size() - MAX_METRICS_PER_NODE) + " more");
+        }
+
+        return metricNames;
     }
 
     private String textOrUnknown(JsonNode node, String fieldName) {
