@@ -171,6 +171,7 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString()
                 .contains("SQL Executions Markdown: " + outputDirectory.resolve("sql-executions.md")));
         assertTrue(output.toString().contains("See SQL Executions Markdown for full SQL plan output."));
+        assertTrue(output.toString().contains("SQL Plan DOT: " + outputDirectory.resolve("sql-execution-0.dot")));
 
         JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
         assertEquals("local-sparkdoctor-fixture", json.path("application").path("id").asText());
@@ -196,8 +197,13 @@ final class AnalyzeCommandTest {
         String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));
         assertTrue(sqlExecutionsMarkdown.contains("# SparkDoctor SQL Executions"));
         assertTrue(sqlExecutionsMarkdown.contains("## SQL Execution 0"));
+        assertTrue(sqlExecutionsMarkdown.contains("- DOT graph: `sql-execution-0.dot`"));
         assertTrue(sqlExecutionsMarkdown.contains("### Latest Physical Plan"));
         assertTrue(sqlExecutionsMarkdown.contains("AdaptiveSparkPlan"));
+        String sqlPlanDot = Files.readString(outputDirectory.resolve("sql-execution-0.dot"));
+        assertTrue(sqlPlanDot.contains("digraph sql_execution_0"));
+        assertTrue(sqlPlanDot.contains("AdaptiveSparkPlan"));
+        assertTrue(sqlPlanDot.contains("Exchange"));
         assertTrue(Files.readString(outputDirectory.resolve("recommendations.md")).contains("No recommendations generated."));
     }
 

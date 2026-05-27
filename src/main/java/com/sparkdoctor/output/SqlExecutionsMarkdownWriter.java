@@ -36,7 +36,13 @@ public final class SqlExecutionsMarkdownWriter {
             markdown.append("- Start time millis: ").append(display(sqlExecution.startTimeMillis())).append("\n");
             markdown.append("- End time millis: ").append(display(sqlExecution.endTimeMillis())).append("\n");
             markdown.append("- Duration millis: ").append(display(sqlExecution.durationMillis())).append("\n");
-            markdown.append("- Status: ").append(status(sqlExecution)).append("\n\n");
+            markdown.append("- Status: ").append(status(sqlExecution)).append("\n");
+            if (sqlExecution.hasSparkPlanInfo()) {
+                markdown.append("- DOT graph: `")
+                        .append(SqlPlanDotWriter.fileName(sqlExecution))
+                        .append("`\n");
+            }
+            markdown.append("\n");
             if (hasText(sqlExecution.details())) {
                 markdown.append("### Details\n\n");
                 markdown.append("```text\n");

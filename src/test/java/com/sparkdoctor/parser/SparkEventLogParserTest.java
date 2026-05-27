@@ -519,6 +519,10 @@ final class SparkEventLogParserTest {
         assertEquals(960L, parsedEventLog.sqlExecutions().get(0).durationMillis());
         assertTrue(parsedEventLog.sqlExecutions().get(0).physicalPlanDescription().contains("AdaptiveSparkPlan"));
         assertTrue(parsedEventLog.sqlExecutions().get(0).latestPhysicalPlanDescription().contains("Final Plan"));
+        assertEquals("AdaptiveSparkPlan", parsedEventLog.sqlExecutions().get(0).sparkPlanInfo().path("nodeName").asText());
+        assertEquals(
+                "AdaptiveSparkPlan",
+                parsedEventLog.sqlExecutions().get(0).latestSparkPlanInfo().path("nodeName").asText());
         assertEquals(0, parsedEventLog.failedJobs().size());
         assertEquals(0, parsedEventLog.failedStages().size());
         assertEquals(0, parsedEventLog.bottlenecks().size());

@@ -3,6 +3,8 @@ package com.sparkdoctor.output;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
@@ -18,9 +20,11 @@ final class SqlExecutionsMarkdownWriterTest {
     private Path tempDir;
 
     private final SqlExecutionsMarkdownWriter writer = new SqlExecutionsMarkdownWriter();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void writesSqlExecutionsMarkdownIntoOutputDirectory() throws Exception {
+        JsonNode plan = objectMapper.readTree("{\"nodeName\":\"AdaptiveSparkPlan\",\"children\":[]}");
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
                 new AnalysisSummary(1, 1, 1, 0),
@@ -35,7 +39,9 @@ final class SqlExecutionsMarkdownWriterTest {
                         600L,
                         "Initial Plan",
                         "Final Plan",
-                        "")),
+                        "",
+                        plan,
+                        plan)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -53,6 +59,7 @@ final class SqlExecutionsMarkdownWriterTest {
         assertTrue(markdown.contains("- Description: collect"));
         assertTrue(markdown.contains("- Duration millis: 600"));
         assertTrue(markdown.contains("- Status: success"));
+        assertTrue(markdown.contains("- DOT graph: `sql-execution-3.dot`"));
         assertTrue(markdown.contains("### Details"));
         assertTrue(markdown.contains("Dataset.collectToPython"));
         assertTrue(markdown.contains("### Initial Physical Plan"));

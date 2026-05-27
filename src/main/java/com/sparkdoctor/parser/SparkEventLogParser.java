@@ -480,6 +480,8 @@ public final class SparkEventLogParser {
         private String physicalPlanDescription;
         private String latestPhysicalPlanDescription;
         private String errorMessage;
+        private JsonNode sparkPlanInfo;
+        private JsonNode latestSparkPlanInfo;
 
         private SqlExecutionAccumulator(long id) {
             this.id = id;
@@ -492,12 +494,18 @@ public final class SparkEventLogParser {
             startTimeMillis = longOrNull(event, "time");
             physicalPlanDescription = textOrNull(event, "physicalPlanDescription");
             latestPhysicalPlanDescription = physicalPlanDescription;
+            sparkPlanInfo = event.get("sparkPlanInfo");
+            latestSparkPlanInfo = sparkPlanInfo;
         }
 
         private void update(JsonNode event) {
             String updatedPhysicalPlanDescription = textOrNull(event, "physicalPlanDescription");
             if (updatedPhysicalPlanDescription != null) {
                 latestPhysicalPlanDescription = updatedPhysicalPlanDescription;
+            }
+            JsonNode updatedSparkPlanInfo = event.get("sparkPlanInfo");
+            if (updatedSparkPlanInfo != null && !updatedSparkPlanInfo.isNull()) {
+                latestSparkPlanInfo = updatedSparkPlanInfo;
             }
         }
 
@@ -519,7 +527,9 @@ public final class SparkEventLogParser {
                     durationMillis,
                     physicalPlanDescription,
                     latestPhysicalPlanDescription,
-                    errorMessage);
+                    errorMessage,
+                    sparkPlanInfo,
+                    latestSparkPlanInfo);
         }
     }
 }

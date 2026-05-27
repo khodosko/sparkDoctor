@@ -17,6 +17,7 @@ It currently generates:
 - `analysis.json`: machine-readable analysis output
 - `recommendations.md`: human-readable recommendation summary
 - `sql-executions.md`: human-readable SQL execution plan output when SQL events are present
+- `sql-execution-<id>.dot`: Graphviz SQL plan graph files when structured SQL plan data is present
 - terminal summary output
 
 Supported inputs:
@@ -273,6 +274,7 @@ sparkdoctor-report/
   analysis.json
   recommendations.md
   sql-executions.md  # only when SQL execution events are present
+  sql-execution-0.dot  # only when structured SQL plan data is present
 ```
 
 ## Example Terminal Output
@@ -359,6 +361,8 @@ Then open `recommendations.md` for a readable explanation.
 
 Open `sql-executions.md` when SQL executions are present and you want the full physical plan text without JSON escaping.
 
+Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present.
+
 Use `analysis.json` when you want the raw evidence:
 
 - look at `stages` for task duration, shuffle, and spill metrics
@@ -373,7 +377,7 @@ SparkDoctor is not a complete Spark UI replacement yet.
 Current limitations:
 
 - Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
-- SQL execution parsing is basic; plan graph export and SQL-specific bottleneck rules are not implemented yet.
+- SQL execution parsing is basic; DOT graph export is available when `sparkPlanInfo` exists, but SQL-specific bottleneck rules are not implemented yet.
 - Executor imbalance detection is not implemented yet.
 - Detector thresholds are conservative and will change as more real workloads are tested.
 

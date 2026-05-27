@@ -6,11 +6,13 @@ import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.output.AnalysisJsonWriter;
 import com.sparkdoctor.output.RecommendationsMarkdownWriter;
 import com.sparkdoctor.output.SqlExecutionsMarkdownWriter;
+import com.sparkdoctor.output.SqlPlanDotWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -27,6 +29,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private final AnalysisJsonWriter analysisJsonWriter;
     private final RecommendationsMarkdownWriter recommendationsMarkdownWriter;
     private final SqlExecutionsMarkdownWriter sqlExecutionsMarkdownWriter;
+    private final SqlPlanDotWriter sqlPlanDotWriter;
 
     @Spec
     private CommandSpec spec;
@@ -42,18 +45,21 @@ public final class AnalyzeCommand implements Callable<Integer> {
                 new SparkEventLogParser(),
                 new AnalysisJsonWriter(),
                 new RecommendationsMarkdownWriter(),
-                new SqlExecutionsMarkdownWriter());
+                new SqlExecutionsMarkdownWriter(),
+                new SqlPlanDotWriter());
     }
 
     AnalyzeCommand(
             SparkEventLogParser parser,
             AnalysisJsonWriter analysisJsonWriter,
             RecommendationsMarkdownWriter recommendationsMarkdownWriter,
-            SqlExecutionsMarkdownWriter sqlExecutionsMarkdownWriter) {
+            SqlExecutionsMarkdownWriter sqlExecutionsMarkdownWriter,
+            SqlPlanDotWriter sqlPlanDotWriter) {
         this.parser = parser;
         this.analysisJsonWriter = analysisJsonWriter;
         this.recommendationsMarkdownWriter = recommendationsMarkdownWriter;
         this.sqlExecutionsMarkdownWriter = sqlExecutionsMarkdownWriter;
+        this.sqlPlanDotWriter = sqlPlanDotWriter;
     }
 
     @Override
@@ -78,10 +84,12 @@ public final class AnalyzeCommand implements Callable<Integer> {
         Path analysisPath;
         Path recommendationsPath;
         Path sqlExecutionsPath = null;
+        List<Path> sqlPlanDotPaths = List.of();
         try {
             analysisPath = analysisJsonWriter.write(outputDirectory, report);
             recommendationsPath = recommendationsMarkdownWriter.write(outputDirectory, report);
             if (!report.sqlExecutions().isEmpty()) {
+                sqlPlanDotPaths = sqlPlanDotWriter.write(outputDirectory, report);
                 sqlExecutionsPath = sqlExecutionsMarkdownWriter.write(outputDirectory, report);
             }
         } catch (IOException exception) {
@@ -125,6 +133,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
         if (sqlExecutionsPath != null) {
             out.printf("SQL Executions Markdown: %s%n", sqlExecutionsPath);
             out.println("See SQL Executions Markdown for full SQL plan output.");
+        }
+        for (Path sqlPlanDotPath : sqlPlanDotPaths) {
+            out.printf("SQL Plan DOT: %s%n", sqlPlanDotPath);
         }
         return 0;
     }

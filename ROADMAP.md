@@ -17,6 +17,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - generate `analysis.json`
 - generate `recommendations.md`
 - generate `sql-executions.md` when SQL execution plans are present
+- generate Graphviz `.dot` files for structured SQL execution plans
 - provide a terminal summary for quick inspection
 
 ## Near-Term
@@ -25,7 +26,7 @@ These are the next open-source priorities.
 
 ### More Spark Diagnostics
 
-- Export Spark SQL execution plans as Graphviz `.dot` files.
+- Add richer labels and metric summaries to SQL execution `.dot` files.
 - Add SQL-specific diagnostics from parsed physical plan nodes.
 - Detect too many tiny tasks.
 - Detect retry-heavy or speculation-heavy workloads.
