@@ -16,6 +16,7 @@ import com.sparkdoctor.model.FailedJob;
 import com.sparkdoctor.model.FailedStage;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
+import com.sparkdoctor.model.SqlExecution;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -35,6 +36,9 @@ public final class SparkEventLogParser {
     private static final String STAGE_SUBMITTED = "SparkListenerStageSubmitted";
     private static final String STAGE_COMPLETED = "SparkListenerStageCompleted";
     private static final String TASK_END = "SparkListenerTaskEnd";
+    private static final String SQL_EXECUTION_START = "SparkListenerSQLExecutionStart";
+    private static final String SQL_ADAPTIVE_EXECUTION_UPDATE = "SparkListenerSQLAdaptiveExecutionUpdate";
+    private static final String SQL_EXECUTION_END = "SparkListenerSQLExecutionEnd";
 
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
@@ -116,6 +120,7 @@ public final class SparkEventLogParser {
         Set<String> taskKeys = new HashSet<>();
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
+        Map<Long, SqlExecutionAccumulator> sqlExecutions = new LinkedHashMap<>();
 
         var iterator = eventLines.iterator();
         while (iterator.hasNext()) {
@@ -204,6 +209,21 @@ public final class SparkEventLogParser {
                 successfulTaskAttempts.put(
                         new TaskAttemptKey(stageId, stageAttemptId == null ? 0 : stageAttemptId, taskIndex),
                         new ParsedTaskAttempt(stageId, taskDurationMillis, shuffleReadBytes, spillMetrics));
+            } else if (isSqlEvent(eventType, SQL_EXECUTION_START)) {
+                Long executionId = longOrNull(event, "executionId");
+                if (executionId != null) {
+                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new).start(event);
+                }
+            } else if (isSqlEvent(eventType, SQL_ADAPTIVE_EXECUTION_UPDATE)) {
+                Long executionId = longOrNull(event, "executionId");
+                if (executionId != null) {
+                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new).update(event);
+                }
+            } else if (isSqlEvent(eventType, SQL_EXECUTION_END)) {
+                Long executionId = longOrNull(event, "executionId");
+                if (executionId != null) {
+                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new).end(event);
+                }
             }
         }
 
@@ -247,10 +267,15 @@ public final class SparkEventLogParser {
                         taskKeys.size(),
                         bottlenecks.size()),
                 stageAnalyses,
+                sqlExecutions.values().stream().map(SqlExecutionAccumulator::toSqlExecution).toList(),
                 failedJobDetails,
                 failedStageDetails,
                 bottlenecks,
                 recommendationEngine.recommend(bottlenecks));
+    }
+
+    private boolean isSqlEvent(String eventType, String sqlEventType) {
+        return eventType.equals(sqlEventType) || eventType.endsWith("." + sqlEventType);
     }
 
     private String textOrNull(JsonNode node, String fieldName) {
@@ -444,4 +469,57 @@ public final class SparkEventLogParser {
             Long taskDurationMillis,
             Long shuffleReadBytes,
             TaskSpillMetrics spillMetrics) {}
+
+    private final class SqlExecutionAccumulator {
+        private final long id;
+        private Long rootExecutionId;
+        private String description;
+        private String details;
+        private Long startTimeMillis;
+        private Long endTimeMillis;
+        private String physicalPlanDescription;
+        private String latestPhysicalPlanDescription;
+        private String errorMessage;
+
+        private SqlExecutionAccumulator(long id) {
+            this.id = id;
+        }
+
+        private void start(JsonNode event) {
+            rootExecutionId = longOrNull(event, "rootExecutionId");
+            description = textOrNull(event, "description");
+            details = textOrNull(event, "details");
+            startTimeMillis = longOrNull(event, "time");
+            physicalPlanDescription = textOrNull(event, "physicalPlanDescription");
+            latestPhysicalPlanDescription = physicalPlanDescription;
+        }
+
+        private void update(JsonNode event) {
+            String updatedPhysicalPlanDescription = textOrNull(event, "physicalPlanDescription");
+            if (updatedPhysicalPlanDescription != null) {
+                latestPhysicalPlanDescription = updatedPhysicalPlanDescription;
+            }
+        }
+
+        private void end(JsonNode event) {
+            endTimeMillis = longOrNull(event, "time");
+            errorMessage = textOrNull(event, "errorMessage");
+        }
+
+        private SqlExecution toSqlExecution() {
+            Long durationMillis =
+                    startTimeMillis == null || endTimeMillis == null ? null : endTimeMillis - startTimeMillis;
+            return new SqlExecution(
+                    id,
+                    rootExecutionId,
+                    description,
+                    details,
+                    startTimeMillis,
+                    endTimeMillis,
+                    durationMillis,
+                    physicalPlanDescription,
+                    latestPhysicalPlanDescription,
+                    errorMessage);
+        }
+    }
 }

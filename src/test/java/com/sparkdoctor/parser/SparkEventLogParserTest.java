@@ -48,6 +48,31 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesSqlExecutionEventsFromLines() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart\","
+                        + "\"executionId\":3,\"rootExecutionId\":3,\"description\":\"collect\","
+                        + "\"details\":\"Dataset.collectToPython\",\"physicalPlanDescription\":\"Initial Plan\","
+                        + "\"time\":1000}",
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate\","
+                        + "\"executionId\":3,\"physicalPlanDescription\":\"Final Plan\"}",
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd\","
+                        + "\"executionId\":3,\"time\":1750,\"errorMessage\":\"\"}"));
+
+        assertEquals(1, parsedEventLog.sqlExecutions().size());
+        assertEquals(3L, parsedEventLog.sqlExecutions().get(0).id());
+        assertEquals(3L, parsedEventLog.sqlExecutions().get(0).rootExecutionId());
+        assertEquals("collect", parsedEventLog.sqlExecutions().get(0).description());
+        assertEquals("Dataset.collectToPython", parsedEventLog.sqlExecutions().get(0).details());
+        assertEquals(1000L, parsedEventLog.sqlExecutions().get(0).startTimeMillis());
+        assertEquals(1750L, parsedEventLog.sqlExecutions().get(0).endTimeMillis());
+        assertEquals(750L, parsedEventLog.sqlExecutions().get(0).durationMillis());
+        assertEquals("Initial Plan", parsedEventLog.sqlExecutions().get(0).physicalPlanDescription());
+        assertEquals("Final Plan", parsedEventLog.sqlExecutions().get(0).latestPhysicalPlanDescription());
+        assertEquals("", parsedEventLog.sqlExecutions().get(0).errorMessage());
+    }
+
+    @Test
     void parsesCompletedAndFailedJobAndStageCountsFromLines() throws Exception {
         ParsedEventLog parsedEventLog = parser.parse(List.of(
                 "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":1}",
@@ -485,6 +510,15 @@ final class SparkEventLogParserTest {
         assertEquals(17, parsedEventLog.analysisSummary().tasks());
         assertEquals(0, parsedEventLog.analysisSummary().issuesDetected());
         assertEquals(4, parsedEventLog.stages().size());
+        assertEquals(1, parsedEventLog.sqlExecutions().size());
+        assertEquals(0L, parsedEventLog.sqlExecutions().get(0).id());
+        assertEquals(0L, parsedEventLog.sqlExecutions().get(0).rootExecutionId());
+        assertEquals(
+                "collect at /tmp/sparkdoctor/scripts/generate-real-spark-eventlog-fixture.py:21",
+                parsedEventLog.sqlExecutions().get(0).description());
+        assertEquals(960L, parsedEventLog.sqlExecutions().get(0).durationMillis());
+        assertTrue(parsedEventLog.sqlExecutions().get(0).physicalPlanDescription().contains("AdaptiveSparkPlan"));
+        assertTrue(parsedEventLog.sqlExecutions().get(0).latestPhysicalPlanDescription().contains("Final Plan"));
         assertEquals(0, parsedEventLog.failedJobs().size());
         assertEquals(0, parsedEventLog.failedStages().size());
         assertEquals(0, parsedEventLog.bottlenecks().size());

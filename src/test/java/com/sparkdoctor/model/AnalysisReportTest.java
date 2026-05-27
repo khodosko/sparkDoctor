@@ -28,6 +28,7 @@ final class AnalysisReportTest {
         assertEquals(0, report.summary().tasks());
         assertEquals(0, report.summary().issuesDetected());
         assertTrue(report.stages().isEmpty());
+        assertTrue(report.sqlExecutions().isEmpty());
         assertTrue(report.failedJobs().isEmpty());
         assertTrue(report.failedStages().isEmpty());
         assertTrue(report.bottlenecks().isEmpty());
@@ -65,6 +66,7 @@ final class AnalysisReportTest {
         assertEquals(3, report.summary().tasks());
         assertEquals(1, report.summary().issuesDetected());
         assertEquals(1, report.stages().size());
+        assertTrue(report.sqlExecutions().isEmpty());
         assertTrue(report.failedJobs().isEmpty());
         assertTrue(report.failedStages().isEmpty());
         assertEquals(4, report.stages().get(0).id());

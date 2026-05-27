@@ -64,6 +64,7 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Jobs: 1"));
         assertTrue(output.toString().contains("Stages: 2"));
         assertTrue(output.toString().contains("Tasks: 3"));
+        assertTrue(output.toString().contains("SQL executions: 0"));
         assertTrue(output.toString().contains("Issues detected: 0"));
         assertTrue(output.toString().contains("Recommendations: 0"));
     }
@@ -83,8 +84,10 @@ final class AnalyzeCommandTest {
         assertEquals(0, exitCode);
         Path analysisJson = outputDirectory.resolve("analysis.json");
         Path recommendationsMarkdown = outputDirectory.resolve("recommendations.md");
+        Path sqlExecutionsMarkdown = outputDirectory.resolve("sql-executions.md");
         assertTrue(Files.exists(analysisJson));
         assertTrue(Files.exists(recommendationsMarkdown));
+        assertTrue(Files.notExists(sqlExecutionsMarkdown));
         assertTrue(output.toString().contains("Analysis JSON: " + analysisJson));
         assertTrue(output.toString().contains("Recommendations Markdown: " + recommendationsMarkdown));
 
@@ -97,6 +100,7 @@ final class AnalyzeCommandTest {
         assertEquals(3, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
         assertEquals(2, json.path("stages").size());
+        assertEquals(0, json.path("sqlExecutions").size());
         assertEquals(0, json.path("stages").get(0).path("id").asInt());
         assertEquals("scan", json.path("stages").get(0).path("name").asText());
         assertEquals(2, json.path("stages").get(0).path("taskCount").asInt());
@@ -161,8 +165,12 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Stages completed: 4"));
         assertTrue(output.toString().contains("Stages failed: 0"));
         assertTrue(output.toString().contains("Tasks: 17"));
+        assertTrue(output.toString().contains("SQL executions: 1"));
         assertTrue(output.toString().contains("Issues detected: 0"));
         assertTrue(output.toString().contains("Recommendations: 0"));
+        assertTrue(output.toString()
+                .contains("SQL Executions Markdown: " + outputDirectory.resolve("sql-executions.md")));
+        assertTrue(output.toString().contains("See SQL Executions Markdown for full SQL plan output."));
 
         JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
         assertEquals("local-sparkdoctor-fixture", json.path("application").path("id").asText());
@@ -176,10 +184,20 @@ final class AnalyzeCommandTest {
         assertEquals(17, json.path("summary").path("tasks").asInt());
         assertEquals(0, json.path("summary").path("issuesDetected").asInt());
         assertEquals(4, json.path("stages").size());
+        assertEquals(1, json.path("sqlExecutions").size());
+        assertEquals(0, json.path("sqlExecutions").get(0).path("id").asLong());
+        assertEquals(960L, json.path("sqlExecutions").get(0).path("durationMillis").asLong());
+        assertTrue(json.path("sqlExecutions").get(0).path("physicalPlanDescription").asText().contains("AdaptiveSparkPlan"));
+        assertTrue(json.path("sqlExecutions").get(0).path("latestPhysicalPlanDescription").asText().contains("Final Plan"));
         assertEquals(0, json.path("failedJobs").size());
         assertEquals(0, json.path("failedStages").size());
         assertEquals(0, json.path("bottlenecks").size());
         assertEquals(0, json.path("recommendations").size());
+        String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));
+        assertTrue(sqlExecutionsMarkdown.contains("# SparkDoctor SQL Executions"));
+        assertTrue(sqlExecutionsMarkdown.contains("## SQL Execution 0"));
+        assertTrue(sqlExecutionsMarkdown.contains("### Latest Physical Plan"));
+        assertTrue(sqlExecutionsMarkdown.contains("AdaptiveSparkPlan"));
         assertTrue(Files.readString(outputDirectory.resolve("recommendations.md")).contains("No recommendations generated."));
     }
 

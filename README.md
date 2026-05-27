@@ -16,6 +16,7 @@ It currently generates:
 
 - `analysis.json`: machine-readable analysis output
 - `recommendations.md`: human-readable recommendation summary
+- `sql-executions.md`: human-readable SQL execution plan output when SQL events are present
 - terminal summary output
 
 Supported inputs:
@@ -42,6 +43,9 @@ Current parsed events include:
 - `SparkListenerStageSubmitted`
 - `SparkListenerStageCompleted`
 - `SparkListenerTaskEnd`
+- `SparkListenerSQLExecutionStart`
+- `SparkListenerSQLAdaptiveExecutionUpdate`
+- `SparkListenerSQLExecutionEnd`
 
 Current summary and stage metrics include:
 
@@ -50,6 +54,7 @@ Current summary and stage metrics include:
 - completed and failed stage counts
 - failed job details
 - failed stage details and failure reasons
+- SQL execution descriptions, timing, and physical plan text
 - min, max, and average task duration
 - total shuffle read bytes
 - max task shuffle read bytes
@@ -267,6 +272,7 @@ Output files:
 sparkdoctor-report/
   analysis.json
   recommendations.md
+  sql-executions.md  # only when SQL execution events are present
 ```
 
 ## Example Terminal Output
@@ -277,8 +283,13 @@ Application: spill_heavy_customer_etl
 Application ID: app-spill-heavy-0001
 Duration: 10000 ms
 Jobs: 1
+Jobs completed: 0
+Jobs failed: 0
 Stages: 1
+Stages completed: 0
+Stages failed: 0
 Tasks: 2
+SQL executions: 0
 Issues detected: 1
 Recommendations: 1
 Top bottlenecks:
@@ -313,6 +324,7 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
       "maxTaskDiskBytesSpilled": 209715200
     }
   ],
+  "sqlExecutions": [],
   "failedJobs": [],
   "failedStages": [],
   "bottlenecks": [
@@ -345,9 +357,12 @@ Start with the terminal summary:
 
 Then open `recommendations.md` for a readable explanation.
 
+Open `sql-executions.md` when SQL executions are present and you want the full physical plan text without JSON escaping.
+
 Use `analysis.json` when you want the raw evidence:
 
 - look at `stages` for task duration, shuffle, and spill metrics
+- look at `sqlExecutions` for SQL descriptions, timings, and plan text
 - look at `bottlenecks` for detected issues and evidence thresholds
 - look at `recommendations` for suggested next actions
 
@@ -358,9 +373,8 @@ SparkDoctor is not a complete Spark UI replacement yet.
 Current limitations:
 
 - Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
-- SQL execution plan analysis is not implemented yet.
+- SQL execution parsing is basic; plan graph export and SQL-specific bottleneck rules are not implemented yet.
 - Executor imbalance detection is not implemented yet.
-- Low parallelism and partition sizing detectors are not implemented yet.
 - Detector thresholds are conservative and will change as more real workloads are tested.
 
 If SparkDoctor misses a real issue or reports something incorrect, please include:

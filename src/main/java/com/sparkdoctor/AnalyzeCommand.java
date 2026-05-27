@@ -5,6 +5,7 @@ import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.output.AnalysisJsonWriter;
 import com.sparkdoctor.output.RecommendationsMarkdownWriter;
+import com.sparkdoctor.output.SqlExecutionsMarkdownWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -25,6 +26,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private final SparkEventLogParser parser;
     private final AnalysisJsonWriter analysisJsonWriter;
     private final RecommendationsMarkdownWriter recommendationsMarkdownWriter;
+    private final SqlExecutionsMarkdownWriter sqlExecutionsMarkdownWriter;
 
     @Spec
     private CommandSpec spec;
@@ -36,16 +38,22 @@ public final class AnalyzeCommand implements Callable<Integer> {
     private Path outputDirectory = Path.of("sparkdoctor-report");
 
     public AnalyzeCommand() {
-        this(new SparkEventLogParser(), new AnalysisJsonWriter(), new RecommendationsMarkdownWriter());
+        this(
+                new SparkEventLogParser(),
+                new AnalysisJsonWriter(),
+                new RecommendationsMarkdownWriter(),
+                new SqlExecutionsMarkdownWriter());
     }
 
     AnalyzeCommand(
             SparkEventLogParser parser,
             AnalysisJsonWriter analysisJsonWriter,
-            RecommendationsMarkdownWriter recommendationsMarkdownWriter) {
+            RecommendationsMarkdownWriter recommendationsMarkdownWriter,
+            SqlExecutionsMarkdownWriter sqlExecutionsMarkdownWriter) {
         this.parser = parser;
         this.analysisJsonWriter = analysisJsonWriter;
         this.recommendationsMarkdownWriter = recommendationsMarkdownWriter;
+        this.sqlExecutionsMarkdownWriter = sqlExecutionsMarkdownWriter;
     }
 
     @Override
@@ -69,9 +77,13 @@ public final class AnalyzeCommand implements Callable<Integer> {
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
         Path analysisPath;
         Path recommendationsPath;
+        Path sqlExecutionsPath = null;
         try {
             analysisPath = analysisJsonWriter.write(outputDirectory, report);
             recommendationsPath = recommendationsMarkdownWriter.write(outputDirectory, report);
+            if (!report.sqlExecutions().isEmpty()) {
+                sqlExecutionsPath = sqlExecutionsMarkdownWriter.write(outputDirectory, report);
+            }
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
             err.printf("Failed to write analysis output: %s%n", exception.getMessage());
@@ -93,6 +105,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Stages completed: %d%n", parsedEventLog.analysisSummary().stagesCompleted());
         out.printf("Stages failed: %d%n", parsedEventLog.analysisSummary().stagesFailed());
         out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
+        out.printf("SQL executions: %d%n", parsedEventLog.sqlExecutions().size());
         out.printf("Issues detected: %d%n", parsedEventLog.analysisSummary().issuesDetected());
         out.printf("Recommendations: %d%n", parsedEventLog.recommendations().size());
         if (!parsedEventLog.bottlenecks().isEmpty()) {
@@ -109,6 +122,10 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Output directory: %s%n", outputDirectory);
         out.printf("Analysis JSON: %s%n", analysisPath);
         out.printf("Recommendations Markdown: %s%n", recommendationsPath);
+        if (sqlExecutionsPath != null) {
+            out.printf("SQL Executions Markdown: %s%n", sqlExecutionsPath);
+            out.println("See SQL Executions Markdown for full SQL plan output.");
+        }
         return 0;
     }
 

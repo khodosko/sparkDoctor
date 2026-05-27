@@ -10,6 +10,7 @@ import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.Recommendation;
+import com.sparkdoctor.model.SqlExecution;
 import com.sparkdoctor.model.StageAnalysis;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +49,19 @@ final class AnalysisJsonWriterTest {
                         700L,
                         200L,
                         500L)),
+                List.of(new SqlExecution(
+                        8L,
+                        8L,
+                        "collect",
+                        "Dataset.collectToPython",
+                        1000L,
+                        1800L,
+                        800L,
+                        "Initial Plan",
+                        "Final Plan",
+                        "")),
+                List.of(),
+                List.of(),
                 List.of(new Bottleneck(
                         "task_duration_skew",
                         "medium",
@@ -99,6 +113,12 @@ final class AnalysisJsonWriterTest {
         assertEquals(700L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
         assertEquals(200L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
         assertEquals(500L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
+        assertEquals(1, json.path("sqlExecutions").size());
+        assertEquals(8L, json.path("sqlExecutions").get(0).path("id").asLong());
+        assertEquals("collect", json.path("sqlExecutions").get(0).path("description").asText());
+        assertEquals(800L, json.path("sqlExecutions").get(0).path("durationMillis").asLong());
+        assertEquals("Initial Plan", json.path("sqlExecutions").get(0).path("physicalPlanDescription").asText());
+        assertEquals("Final Plan", json.path("sqlExecutions").get(0).path("latestPhysicalPlanDescription").asText());
         assertEquals(0, json.path("failedJobs").size());
         assertEquals(0, json.path("failedStages").size());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());

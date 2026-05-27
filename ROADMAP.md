@@ -12,9 +12,11 @@ SparkDoctor currently focuses on offline event log analysis:
 - stream large event logs without loading all lines up front
 - support plain, gzip, zstd, lz4, and snappy event logs
 - summarize Spark applications, jobs, stages, and tasks
+- summarize Spark SQL executions when SQL listener events are available
 - detect common Spark bottlenecks
 - generate `analysis.json`
 - generate `recommendations.md`
+- generate `sql-executions.md` when SQL execution plans are present
 - provide a terminal summary for quick inspection
 
 ## Near-Term
@@ -23,6 +25,8 @@ These are the next open-source priorities.
 
 ### More Spark Diagnostics
 
+- Export Spark SQL execution plans as Graphviz `.dot` files.
+- Add SQL-specific diagnostics from parsed physical plan nodes.
 - Detect too many tiny tasks.
 - Detect retry-heavy or speculation-heavy workloads.
 - Detect executor or host imbalance when event-log signals are available.

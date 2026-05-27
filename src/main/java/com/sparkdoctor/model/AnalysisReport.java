@@ -6,6 +6,7 @@ public record AnalysisReport(
         ApplicationAnalysis application,
         AnalysisSummary summary,
         List<StageAnalysis> stages,
+        List<SqlExecution> sqlExecutions,
         List<FailedJob> failedJobs,
         List<FailedStage> failedStages,
         List<Bottleneck> bottlenecks,
@@ -15,6 +16,7 @@ public record AnalysisReport(
                 parsedEventLog.applicationSummary(),
                 parsedEventLog.analysisSummary(),
                 parsedEventLog.stages(),
+                parsedEventLog.sqlExecutions(),
                 parsedEventLog.failedJobs(),
                 parsedEventLog.failedStages(),
                 parsedEventLog.bottlenecks(),
@@ -68,6 +70,26 @@ public record AnalysisReport(
             List<FailedStage> failedStages,
             List<Bottleneck> bottlenecks,
             List<Recommendation> recommendations) {
+        return from(
+                applicationSummary,
+                analysisSummary,
+                stages,
+                List.of(),
+                failedJobs,
+                failedStages,
+                bottlenecks,
+                recommendations);
+    }
+
+    public static AnalysisReport from(
+            ApplicationSummary applicationSummary,
+            AnalysisSummary analysisSummary,
+            List<StageAnalysis> stages,
+            List<SqlExecution> sqlExecutions,
+            List<FailedJob> failedJobs,
+            List<FailedStage> failedStages,
+            List<Bottleneck> bottlenecks,
+            List<Recommendation> recommendations) {
         ApplicationAnalysis application = new ApplicationAnalysis(
                 applicationSummary.appId(),
                 applicationSummary.appName(),
@@ -89,6 +111,7 @@ public record AnalysisReport(
                         analysisSummary.tasks(),
                         bottlenecks.size()),
                 stages,
+                sqlExecutions,
                 failedJobs,
                 failedStages,
                 bottlenecks,
