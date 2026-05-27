@@ -374,6 +374,36 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesLowShuffleParallelismFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/low-shuffle-parallelism-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-low-shuffle-parallelism-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("low_shuffle_parallelism_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(6, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(11, parsedEventLog.stages().get(0).id());
+        assertEquals("low parallelism shuffle", parsedEventLog.stages().get(0).name());
+        assertEquals(6, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1258291200L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(209715200L, parsedEventLog.stages().get(0).maxTaskShuffleReadBytes());
+        assertEquals(209715200L, parsedEventLog.stages().get(0).medianTaskShuffleReadBytes());
+        assertEquals(209715200L, parsedEventLog.stages().get(0).p95TaskShuffleReadBytes());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("low_shuffle_parallelism", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(11, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(1258291200L, parsedEventLog.bottlenecks().get(0).evidence().get("shuffleReadBytes"));
+        assertEquals(209715200L, parsedEventLog.bottlenecks().get(0).evidence().get("avgTaskShuffleReadBytes"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("increase-shuffle-parallelism", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
     void parsesSpillPressureFromFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/spill-heavy-eventlog.json");
 

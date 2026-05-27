@@ -23,7 +23,6 @@ These are the next open-source priorities.
 
 ### More Spark Diagnostics
 
-- Detect low shuffle parallelism.
 - Detect too many tiny tasks.
 - Detect retry-heavy or speculation-heavy workloads.
 - Detect executor or host imbalance when event-log signals are available.

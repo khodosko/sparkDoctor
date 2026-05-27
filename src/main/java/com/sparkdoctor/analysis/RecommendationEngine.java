@@ -15,6 +15,8 @@ public final class RecommendationEngine {
                 recommendations.add(shufflePartitionSkewRecommendation(bottleneck));
             } else if ("oversized_shuffle_partitions".equals(bottleneck.type())) {
                 recommendations.add(oversizedShufflePartitionsRecommendation(bottleneck));
+            } else if ("low_shuffle_parallelism".equals(bottleneck.type())) {
+                recommendations.add(lowShuffleParallelismRecommendation(bottleneck));
             } else if ("spill_pressure".equals(bottleneck.type())) {
                 recommendations.add(spillPressureRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
@@ -63,6 +65,20 @@ public final class RecommendationEngine {
                         + "reduce data before joins or aggregations, and review filters or projections that could "
                         + "run before the shuffle. Treat executor memory increases as a secondary option after "
                         + "confirming partition sizing is appropriate.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation lowShuffleParallelismRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "increase-shuffle-parallelism",
+                bottleneck.severity(),
+                "Increase shuffle parallelism",
+                "Stage %d read a large amount of shuffle data with relatively few shuffle-reading tasks. "
+                        .formatted(bottleneck.stageId())
+                        + "Increase spark.sql.shuffle.partitions or repartition before wide joins and aggregations, "
+                        + "avoid unnecessary coalesce calls before expensive shuffles, and verify output-file "
+                        + "requirements are not forcing low parallelism.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

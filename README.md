@@ -125,6 +125,32 @@ maxTaskShuffleReadBytes = 300 MiB
 severity = medium
 ```
 
+### Low Shuffle Parallelism
+
+Reports `low_shuffle_parallelism` when a stage reads a large amount of shuffle data with relatively few shuffle-reading tasks.
+
+This is different from oversized shuffle partitions: low parallelism means the stage likely needs more shuffle tasks overall, while oversized partitions means individual task partition sizes are already too large.
+
+Reports when:
+
+- total shuffle read bytes is at least 1 GiB
+- shuffle-reading task count is at most 7
+- average shuffle read per task is below the oversized partition threshold
+
+Severity is `high` when:
+
+- total shuffle read bytes is at least 10 GiB
+- and shuffle-reading task count is at most 15
+
+Example:
+
+```text
+shuffleReadBytes = 1.2 GiB
+shuffleReadingTasks = 6
+avgTaskShuffleReadBytes = 200 MiB
+severity = medium
+```
+
 ### Spill Pressure
 
 Reports `spill_pressure` when a stage spills enough data to suggest memory pressure during shuffle, sort, join, or aggregation.
@@ -363,6 +389,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/oversized-shuffle-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/low-shuffle-parallelism-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report

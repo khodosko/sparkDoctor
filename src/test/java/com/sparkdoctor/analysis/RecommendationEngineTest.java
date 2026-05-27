@@ -78,6 +78,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsIncreasingShuffleParallelismForLowShuffleParallelism() {
+        Bottleneck bottleneck = new Bottleneck(
+                "low_shuffle_parallelism",
+                "medium",
+                4,
+                "Stage 4 has low shuffle parallelism.",
+                Map.of("shuffleReadBytes", 1258291200L));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("increase-shuffle-parallelism", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Increase shuffle parallelism", recommendation.title());
+        assertEquals("low_shuffle_parallelism", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("spark.sql.shuffle.partitions"));
+        assertTrue(recommendation.description().contains("coalesce"));
+    }
+
+    @Test
     void recommendsReductionForSpillPressure() {
         Bottleneck bottleneck = new Bottleneck(
                 "spill_pressure",

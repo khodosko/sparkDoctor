@@ -308,6 +308,54 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesLowShuffleParallelismBottleneckForLowShuffleParallelismFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("low-shuffle-parallelism-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/low-shuffle-parallelism-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains(
+                "- [medium] low_shuffle_parallelism (stage 11): Stage 11 has low shuffle parallelism."));
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("low_shuffle_parallelism_customer_etl", json.path("application").path("name").asText());
+        assertEquals(6, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(1258291200L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
+        assertEquals(209715200L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
+        assertEquals(209715200L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());
+        assertEquals(209715200L, json.path("stages").get(0).path("p95TaskShuffleReadBytes").asLong());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("low_shuffle_parallelism", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(11, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(
+                1258291200L,
+                json.path("bottlenecks").get(0).path("evidence").path("shuffleReadBytes").asLong());
+        assertEquals(
+                209715200L,
+                json.path("bottlenecks").get(0).path("evidence").path("avgTaskShuffleReadBytes").asLong());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("increase-shuffle-parallelism", json.path("recommendations").get(0).path("id").asText());
+        assertEquals(
+                "low_shuffle_parallelism",
+                json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Increase shuffle parallelism"));
+        assertTrue(recommendationsMarkdown.contains("- Severity: medium"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 11"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: low_shuffle_parallelism"));
+    }
+
+    @Test
     void analyzeWritesSpillPressureBottleneckForSpillHeavyFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("spill-heavy-report");
         StringWriter output = new StringWriter();
