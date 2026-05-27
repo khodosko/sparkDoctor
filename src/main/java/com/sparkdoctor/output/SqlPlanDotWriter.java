@@ -6,11 +6,14 @@ import com.sparkdoctor.model.SqlExecution;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class SqlPlanDotWriter {
     private static final int MAX_METRICS_PER_NODE = 5;
+    private static final DecimalFormat WHOLE_NUMBER_FORMAT = new DecimalFormat("#,##0");
 
     public List<Path> write(Path outputDirectory, AnalysisReport report) throws IOException {
         Files.createDirectories(outputDirectory);
@@ -46,23 +49,27 @@ public final class SqlPlanDotWriter {
         dot.append("  graph [rankdir=TB];\n");
         dot.append("  node [shape=box, style=\"rounded,filled\", fillcolor=\"#f8fafc\", color=\"#64748b\"];\n");
         dot.append("  edge [color=\"#64748b\"];\n");
-        appendNode(dot, sparkPlanInfo, nodeIds);
+        appendNode(dot, sparkPlanInfo, nodeIds, sqlExecution.sqlMetricValues());
         dot.append("}\n");
         return dot.toString();
     }
 
-    private String appendNode(StringBuilder dot, JsonNode sparkPlanInfo, NodeIdGenerator nodeIds) {
+    private String appendNode(
+            StringBuilder dot,
+            JsonNode sparkPlanInfo,
+            NodeIdGenerator nodeIds,
+            Map<Long, String> sqlMetricValues) {
         String nodeId = nodeIds.next();
         dot.append("  ")
                 .append(nodeId)
                 .append(" [label=\"")
-                .append(escape(label(sparkPlanInfo)))
+                .append(escape(label(sparkPlanInfo, sqlMetricValues)))
                 .append("\"];\n");
 
         JsonNode children = sparkPlanInfo.get("children");
         if (children != null && children.isArray()) {
             for (JsonNode child : children) {
-                String childNodeId = appendNode(dot, child, nodeIds);
+                String childNodeId = appendNode(dot, child, nodeIds, sqlMetricValues);
                 dot.append("  ").append(nodeId).append(" -> ").append(childNodeId).append(";\n");
             }
         }
@@ -70,7 +77,7 @@ public final class SqlPlanDotWriter {
         return nodeId;
     }
 
-    private String label(JsonNode sparkPlanInfo) {
+    private String label(JsonNode sparkPlanInfo, Map<Long, String> sqlMetricValues) {
         String nodeName = textOrUnknown(sparkPlanInfo, "nodeName");
         String simpleString = textOrNull(sparkPlanInfo, "simpleString");
         StringBuilder label = new StringBuilder(nodeName);
@@ -78,40 +85,121 @@ public final class SqlPlanDotWriter {
             label.append("\n").append(simpleString);
         }
 
-        List<String> metricNames = metricNames(sparkPlanInfo);
-        if (!metricNames.isEmpty()) {
+        List<String> metricLabels = metricLabels(sparkPlanInfo, sqlMetricValues);
+        if (!metricLabels.isEmpty()) {
             label.append("\n\nmetrics:");
-            for (String metricName : metricNames) {
-                label.append("\n- ").append(metricName);
+            for (String metricLabel : metricLabels) {
+                label.append("\n- ").append(metricLabel);
             }
         }
 
         return label.toString();
     }
 
-    private List<String> metricNames(JsonNode sparkPlanInfo) {
+    private List<String> metricLabels(JsonNode sparkPlanInfo, Map<Long, String> sqlMetricValues) {
         JsonNode metrics = sparkPlanInfo.get("metrics");
         if (metrics == null || !metrics.isArray() || metrics.isEmpty()) {
             return List.of();
         }
 
-        List<String> metricNames = new ArrayList<>();
+        List<String> metricLabels = new ArrayList<>();
         for (JsonNode metric : metrics) {
             String metricName = textOrNull(metric, "name");
             if (metricName == null || metricName.isBlank()) {
                 continue;
             }
-            metricNames.add(metricName);
-            if (metricNames.size() == MAX_METRICS_PER_NODE) {
+            metricLabels.add(metricLabel(metric, metricName, sqlMetricValues));
+            if (metricLabels.size() == MAX_METRICS_PER_NODE) {
                 break;
             }
         }
 
         if (metrics.size() > MAX_METRICS_PER_NODE) {
-            metricNames.add("+" + (metrics.size() - MAX_METRICS_PER_NODE) + " more");
+            metricLabels.add("+" + (metrics.size() - MAX_METRICS_PER_NODE) + " more");
         }
 
-        return metricNames;
+        return metricLabels;
+    }
+
+    private String metricLabel(JsonNode metric, String metricName, Map<Long, String> sqlMetricValues) {
+        Long accumulatorId = longOrNull(metric, "accumulatorId");
+        if (accumulatorId == null) {
+            return metricName;
+        }
+
+        String value = sqlMetricValues.get(accumulatorId);
+        if (value == null) {
+            return metricName;
+        }
+
+        String metricType = textOrNull(metric, "metricType");
+        return metricName + ": " + formatMetricValue(value, metricType);
+    }
+
+    private String formatMetricValue(String value, String metricType) {
+        Long numericValue = parseLongOrNull(value);
+        if (numericValue == null) {
+            return value;
+        }
+
+        if ("size".equals(metricType)) {
+            return formatBytes(numericValue);
+        }
+        if ("timing".equals(metricType)) {
+            return WHOLE_NUMBER_FORMAT.format(numericValue) + " ms";
+        }
+        if ("nsTiming".equals(metricType)) {
+            return WHOLE_NUMBER_FORMAT.format(numericValue) + " ns";
+        }
+
+        return WHOLE_NUMBER_FORMAT.format(numericValue);
+    }
+
+    private String formatBytes(long bytes) {
+        long kib = 1024L;
+        long mib = kib * 1024L;
+        long gib = mib * 1024L;
+        if (bytes >= gib) {
+            return oneDecimal(bytes, gib) + " GiB";
+        }
+        if (bytes >= mib) {
+            return oneDecimal(bytes, mib) + " MiB";
+        }
+        if (bytes >= kib) {
+            return oneDecimal(bytes, kib) + " KiB";
+        }
+
+        return WHOLE_NUMBER_FORMAT.format(bytes) + " B";
+    }
+
+    private String oneDecimal(long value, long divisor) {
+        double scaledValue = (double) value / divisor;
+        if (scaledValue == Math.rint(scaledValue)) {
+            return WHOLE_NUMBER_FORMAT.format((long) scaledValue);
+        }
+
+        return new DecimalFormat("#,##0.0").format(scaledValue);
+    }
+
+    private Long parseLongOrNull(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Long longOrNull(JsonNode node, String fieldName) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
+        JsonNode value = node.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+
+        return value.asLong();
     }
 
     private String textOrUnknown(JsonNode node, String fieldName) {

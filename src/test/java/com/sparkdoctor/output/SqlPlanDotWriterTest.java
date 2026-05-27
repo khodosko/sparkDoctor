@@ -12,6 +12,7 @@ import com.sparkdoctor.model.SqlExecution;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -64,7 +65,15 @@ final class SqlPlanDotWriterTest {
                         "Final Plan",
                         "",
                         plan,
-                        plan)),
+                        plan,
+                        Map.of(
+                                1L, "29",
+                                2L, "2048",
+                                3L, "1000",
+                                4L, "2500",
+                                5L, "4",
+                                6L, "12",
+                                7L, "1024"))),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -78,12 +87,12 @@ final class SqlPlanDotWriterTest {
         assertTrue(dot.contains("digraph sql_execution_7"));
         assertTrue(dot.contains("AdaptiveSparkPlan"));
         assertTrue(dot.contains("Exchange"));
-        assertTrue(dot.contains("metrics:\\n- duration"));
-        assertTrue(dot.contains("- shuffle bytes written"));
-        assertTrue(dot.contains("- shuffle records written"));
-        assertTrue(dot.contains("- records read"));
-        assertTrue(dot.contains("- number of partitions"));
-        assertTrue(dot.contains("- fetch wait time"));
+        assertTrue(dot.contains("metrics:\\n- duration: 29 ms"));
+        assertTrue(dot.contains("- shuffle bytes written: 2 KiB"));
+        assertTrue(dot.contains("- shuffle records written: 1,000"));
+        assertTrue(dot.contains("- records read: 2,500"));
+        assertTrue(dot.contains("- number of partitions: 4"));
+        assertTrue(dot.contains("- fetch wait time: 12 ms"));
         assertTrue(dot.contains("- +1 more"));
         assertTrue(dot.contains("n0 -> n1"));
     }

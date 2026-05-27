@@ -54,8 +54,16 @@ final class SparkEventLogParserTest {
                         + "\"executionId\":3,\"rootExecutionId\":3,\"description\":\"collect\","
                         + "\"details\":\"Dataset.collectToPython\",\"physicalPlanDescription\":\"Initial Plan\","
                         + "\"time\":1000}",
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7,\"Stage IDs\":[9],"
+                        + "\"Properties\":{\"spark.sql.execution.id\":\"3\"}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":9,\"Accumulables\":["
+                        + "{\"ID\":44,\"Name\":\"shuffle bytes written\",\"Value\":\"2048\","
+                        + "\"Metadata\":\"sql\"}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate\","
                         + "\"executionId\":3,\"physicalPlanDescription\":\"Final Plan\"}",
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates\","
+                        + "\"executionId\":3,\"accumUpdates\":[[55,4]]}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd\","
                         + "\"executionId\":3,\"time\":1750,\"errorMessage\":\"\"}"));
 
@@ -70,6 +78,8 @@ final class SparkEventLogParserTest {
         assertEquals("Initial Plan", parsedEventLog.sqlExecutions().get(0).physicalPlanDescription());
         assertEquals("Final Plan", parsedEventLog.sqlExecutions().get(0).latestPhysicalPlanDescription());
         assertEquals("", parsedEventLog.sqlExecutions().get(0).errorMessage());
+        assertEquals("2048", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(44L));
+        assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(55L));
     }
 
     @Test
@@ -523,6 +533,8 @@ final class SparkEventLogParserTest {
         assertEquals(
                 "AdaptiveSparkPlan",
                 parsedEventLog.sqlExecutions().get(0).latestSparkPlanInfo().path("nodeName").asText());
+        assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(136L));
+        assertEquals("626", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(204L));
         assertEquals(0, parsedEventLog.failedJobs().size());
         assertEquals(0, parsedEventLog.failedStages().size());
         assertEquals(0, parsedEventLog.bottlenecks().size());

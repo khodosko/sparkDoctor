@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,7 @@ public final class SparkEventLogParser {
     private static final String SQL_EXECUTION_START = "SparkListenerSQLExecutionStart";
     private static final String SQL_ADAPTIVE_EXECUTION_UPDATE = "SparkListenerSQLAdaptiveExecutionUpdate";
     private static final String SQL_EXECUTION_END = "SparkListenerSQLExecutionEnd";
+    private static final String SQL_DRIVER_ACCUM_UPDATES = "SparkListenerDriverAccumUpdates";
 
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
@@ -121,6 +123,7 @@ public final class SparkEventLogParser {
         Map<Integer, StageAccumulator> stages = new LinkedHashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
         Map<Long, SqlExecutionAccumulator> sqlExecutions = new LinkedHashMap<>();
+        Map<Integer, Long> stageSqlExecutionIds = new HashMap<>();
 
         var iterator = eventLines.iterator();
         while (iterator.hasNext()) {
@@ -139,6 +142,7 @@ public final class SparkEventLogParser {
                 if (jobId != null) {
                     jobIds.add(jobId);
                 }
+                recordStageSqlExecutionIds(event, stageSqlExecutionIds);
             } else if (JOB_END.equals(eventType)) {
                 Integer jobId = intOrNull(event, "Job ID");
                 if (jobId != null) {
@@ -176,6 +180,7 @@ public final class SparkEventLogParser {
                         completedStageIds.add(stageId);
                         failedStageIds.remove(stageId);
                         failedStages.remove(stageId);
+                        recordStageSqlAccumulatorValues(stageInfo, stageSqlExecutionIds, sqlExecutions);
                     } else {
                         completedStageIds.remove(stageId);
                         failedStageIds.add(stageId);
@@ -223,6 +228,12 @@ public final class SparkEventLogParser {
                 Long executionId = longOrNull(event, "executionId");
                 if (executionId != null) {
                     sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new).end(event);
+                }
+            } else if (isSqlEvent(eventType, SQL_DRIVER_ACCUM_UPDATES)) {
+                Long executionId = longOrNull(event, "executionId");
+                if (executionId != null) {
+                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new)
+                            .recordDriverAccumulatorUpdates(event);
                 }
             }
         }
@@ -276,6 +287,48 @@ public final class SparkEventLogParser {
 
     private boolean isSqlEvent(String eventType, String sqlEventType) {
         return eventType.equals(sqlEventType) || eventType.endsWith("." + sqlEventType);
+    }
+
+    private void recordStageSqlExecutionIds(JsonNode event, Map<Integer, Long> stageSqlExecutionIds) {
+        Long executionId = longOrNull(event.get("Properties"), "spark.sql.execution.id");
+        if (executionId == null) {
+            return;
+        }
+
+        JsonNode stageIds = event.get("Stage IDs");
+        if (stageIds != null && stageIds.isArray()) {
+            for (JsonNode stageId : stageIds) {
+                stageSqlExecutionIds.put(stageId.asInt(), executionId);
+            }
+        }
+
+        JsonNode stageInfos = event.get("Stage Infos");
+        if (stageInfos != null && stageInfos.isArray()) {
+            for (JsonNode stageInfo : stageInfos) {
+                Integer stageId = intOrNull(stageInfo, "Stage ID");
+                if (stageId != null) {
+                    stageSqlExecutionIds.put(stageId, executionId);
+                }
+            }
+        }
+    }
+
+    private void recordStageSqlAccumulatorValues(
+            JsonNode stageInfo,
+            Map<Integer, Long> stageSqlExecutionIds,
+            Map<Long, SqlExecutionAccumulator> sqlExecutions) {
+        Integer stageId = intOrNull(stageInfo, "Stage ID");
+        if (stageId == null) {
+            return;
+        }
+
+        Long executionId = stageSqlExecutionIds.get(stageId);
+        if (executionId == null) {
+            return;
+        }
+
+        sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new)
+                .recordSqlAccumulables(stageInfo.get("Accumulables"));
     }
 
     private String textOrNull(JsonNode node, String fieldName) {
@@ -482,6 +535,7 @@ public final class SparkEventLogParser {
         private String errorMessage;
         private JsonNode sparkPlanInfo;
         private JsonNode latestSparkPlanInfo;
+        private Map<Long, String> sqlMetricValues = new LinkedHashMap<>();
 
         private SqlExecutionAccumulator(long id) {
             this.id = id;
@@ -514,6 +568,37 @@ public final class SparkEventLogParser {
             errorMessage = textOrNull(event, "errorMessage");
         }
 
+        private void recordDriverAccumulatorUpdates(JsonNode event) {
+            JsonNode accumUpdates = event.get("accumUpdates");
+            if (accumUpdates == null || !accumUpdates.isArray()) {
+                return;
+            }
+
+            for (JsonNode accumUpdate : accumUpdates) {
+                if (!accumUpdate.isArray() || accumUpdate.size() < 2) {
+                    continue;
+                }
+                sqlMetricValues.put(accumUpdate.get(0).asLong(), accumUpdate.get(1).asText());
+            }
+        }
+
+        private void recordSqlAccumulables(JsonNode accumulables) {
+            if (accumulables == null || !accumulables.isArray()) {
+                return;
+            }
+
+            for (JsonNode accumulable : accumulables) {
+                if (!"sql".equals(textOrNull(accumulable, "Metadata"))) {
+                    continue;
+                }
+                Long accumulatorId = longOrNull(accumulable, "ID");
+                String value = textOrNull(accumulable, "Value");
+                if (accumulatorId != null && value != null) {
+                    sqlMetricValues.put(accumulatorId, value);
+                }
+            }
+        }
+
         private SqlExecution toSqlExecution() {
             Long durationMillis =
                     startTimeMillis == null || endTimeMillis == null ? null : endTimeMillis - startTimeMillis;
@@ -529,7 +614,8 @@ public final class SparkEventLogParser {
                     latestPhysicalPlanDescription,
                     errorMessage,
                     sparkPlanInfo,
-                    latestSparkPlanInfo);
+                    latestSparkPlanInfo,
+                    sqlMetricValues);
         }
     }
 }

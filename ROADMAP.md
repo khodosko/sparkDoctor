@@ -26,8 +26,7 @@ These are the next open-source priorities.
 
 ### More Spark Diagnostics
 
-- Add SQL metric values to SQL execution `.dot` files by joining plan metrics to accumulator updates.
-- Add SQL-specific diagnostics from parsed physical plan nodes.
+- Add SQL-specific diagnostics from parsed physical plan nodes and metric values.
 - Detect too many tiny tasks.
 - Detect retry-heavy or speculation-heavy workloads.
 - Detect executor or host imbalance when event-log signals are available.
