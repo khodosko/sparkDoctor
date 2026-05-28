@@ -381,11 +381,18 @@ Current limitations:
 - Executor imbalance detection is not implemented yet.
 - Detector thresholds are conservative and will change as more real workloads are tested.
 
-If SparkDoctor misses a real issue or reports something incorrect, please include:
+## Feedback And Real Event Logs
+
+If SparkDoctor does not work on your event log, misses a real issue, or reports something incorrect, please open a GitHub issue or email `dkhodosko@gmail.com`.
+
+Helpful details to include:
 
 - Spark version
 - deployment environment, for example local Spark, EMR, Databricks, Kubernetes, or YARN
+- whether the input is a file or directory
+- compression type if known, for example plain, gzip, zstd, lz4, or snappy
 - the command you ran
+- the error message, if any
 - `analysis.json`
 - `recommendations.md`
 - a small sanitized event log if possible
