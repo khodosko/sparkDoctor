@@ -39,6 +39,10 @@ final class AnalysisJsonWriterTest {
                         1000L,
                         3000L,
                         2000L,
+                        2000L,
+                        3000L,
+                        3000L,
+                        List.of(1000L, 3000L),
                         7000L,
                         5000L,
                         3500L,
@@ -109,6 +113,12 @@ final class AnalysisJsonWriterTest {
         assertEquals(1000L, json.path("stages").get(0).path("minTaskDurationMillis").asLong());
         assertEquals(3000L, json.path("stages").get(0).path("maxTaskDurationMillis").asLong());
         assertEquals(2000L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
+        assertEquals(2000L, json.path("stages").get(0).path("medianTaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(0).path("p95TaskDurationMillis").asLong());
+        assertEquals(3000L, json.path("stages").get(0).path("p99TaskDurationMillis").asLong());
+        assertEquals(2, json.path("stages").get(0).path("taskDurationMillis").size());
+        assertEquals(1000L, json.path("stages").get(0).path("taskDurationMillis").get(0).asLong());
+        assertEquals(3000L, json.path("stages").get(0).path("taskDurationMillis").get(1).asLong());
         assertEquals(7000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());
         assertEquals(5000L, json.path("stages").get(0).path("maxTaskShuffleReadBytes").asLong());
         assertEquals(3500L, json.path("stages").get(0).path("medianTaskShuffleReadBytes").asLong());

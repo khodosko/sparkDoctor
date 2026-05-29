@@ -15,6 +15,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - summarize Spark SQL executions when SQL listener events are available
 - detect common Spark bottlenecks
 - detect task-level memory and disk spill skew
+- detect excessive tiny task overhead
 - generate `analysis.json`
 - generate `recommendations.md`
 - generate `sql-executions.md` when SQL execution plans are present
@@ -28,7 +29,6 @@ These are the next open-source priorities.
 ### More Spark Diagnostics
 
 - Add SQL-specific diagnostics from parsed physical plan nodes and metric values.
-- Detect too many tiny tasks.
 - Detect retry-heavy or speculation-heavy workloads.
 - Detect executor or host imbalance when event-log signals are available.
 - Improve failed job and failed stage evidence.

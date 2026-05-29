@@ -166,6 +166,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsReductionForTooManyTinyTasks() {
+        Bottleneck bottleneck = new Bottleneck(
+                "too_many_tiny_tasks",
+                "medium",
+                4,
+                "Stage 4 has too many tiny tasks.",
+                Map.of("completedTasks", 100));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("reduce-tiny-task-overhead", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Reduce tiny task overhead", recommendation.title());
+        assertEquals("too_many_tiny_tasks", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("spark.sql.shuffle.partitions"));
+        assertTrue(recommendation.description().contains("compacting small input files"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",

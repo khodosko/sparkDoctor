@@ -10,6 +10,7 @@ import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
+import com.sparkdoctor.analysis.TinyTaskDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
@@ -51,6 +52,7 @@ public final class SparkEventLogParser {
     private final LowShuffleParallelismDetector lowShuffleParallelismDetector;
     private final SpillPressureDetector spillPressureDetector;
     private final SpillSkewDetector spillSkewDetector;
+    private final TinyTaskDetector tinyTaskDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
@@ -64,6 +66,7 @@ public final class SparkEventLogParser {
                 new LowShuffleParallelismDetector(),
                 new SpillPressureDetector(),
                 new SpillSkewDetector(),
+                new TinyTaskDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
     }
@@ -77,6 +80,7 @@ public final class SparkEventLogParser {
             LowShuffleParallelismDetector lowShuffleParallelismDetector,
             SpillPressureDetector spillPressureDetector,
             SpillSkewDetector spillSkewDetector,
+            TinyTaskDetector tinyTaskDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
@@ -87,6 +91,7 @@ public final class SparkEventLogParser {
         this.lowShuffleParallelismDetector = lowShuffleParallelismDetector;
         this.spillPressureDetector = spillPressureDetector;
         this.spillSkewDetector = spillSkewDetector;
+        this.tinyTaskDetector = tinyTaskDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
@@ -268,6 +273,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(lowShuffleParallelismDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillSkewDetector.detect(stageAnalyses));
+        bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));

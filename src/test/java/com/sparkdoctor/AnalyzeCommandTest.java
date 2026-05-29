@@ -482,6 +482,62 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesTooManyTinyTasksBottleneckForTinyTasksFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("tiny-tasks-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/tiny-tasks-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: tiny_tasks_customer_etl"));
+        assertTrue(output.toString().contains("Tasks: 100"));
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains("Top bottlenecks:"));
+        assertTrue(output.toString().contains(
+                "- [medium] too_many_tiny_tasks (stage 15): Stage 15 has too many tiny tasks."));
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("tiny_tasks_customer_etl", json.path("application").path("name").asText());
+        assertEquals(100, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(200L, json.path("stages").get(0).path("avgTaskDurationMillis").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("medianTaskDurationMillis").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("p95TaskDurationMillis").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("p99TaskDurationMillis").asLong());
+        assertEquals(100, json.path("stages").get(0).path("taskDurationMillis").size());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("too_many_tiny_tasks", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(15, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(
+                100,
+                json.path("bottlenecks").get(0).path("evidence").path("completedTasks").asInt());
+        assertEquals(
+                200L,
+                json.path("bottlenecks").get(0).path("evidence").path("avgTaskDurationMillis").asLong());
+        assertEquals(
+                200L,
+                json.path("bottlenecks").get(0).path("evidence").path("p95TaskDurationMillis").asLong());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("reduce-tiny-task-overhead", json.path("recommendations").get(0).path("id").asText());
+        assertEquals(
+                "too_many_tiny_tasks",
+                json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(15, json.path("recommendations").get(0).path("stageId").asInt());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Reduce tiny task overhead"));
+        assertTrue(recommendationsMarkdown.contains("- Severity: medium"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 15"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: too_many_tiny_tasks"));
+    }
+
+    @Test
     void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("failed-report");
         StringWriter output = new StringWriter();

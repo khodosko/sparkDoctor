@@ -165,6 +165,10 @@ final class SparkEventLogParserTest {
         assertEquals(1500L, parsedEventLog.stages().get(0).minTaskDurationMillis());
         assertEquals(4000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
         assertEquals(2750L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(2750L, parsedEventLog.stages().get(0).medianTaskDurationMillis());
+        assertEquals(4000L, parsedEventLog.stages().get(0).p95TaskDurationMillis());
+        assertEquals(4000L, parsedEventLog.stages().get(0).p99TaskDurationMillis());
+        assertEquals(List.of(1500L, 4000L), parsedEventLog.stages().get(0).taskDurationMillis());
     }
 
     @Test
@@ -514,6 +518,39 @@ final class SparkEventLogParserTest {
         assertEquals(30.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("investigate-memory-spill-skew", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
+    void parsesTinyTasksFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/tiny-tasks-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-tiny-tasks-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("tiny_tasks_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(100, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(15, parsedEventLog.stages().get(0).id());
+        assertEquals(100, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(200L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(200L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(200L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(200L, parsedEventLog.stages().get(0).medianTaskDurationMillis());
+        assertEquals(200L, parsedEventLog.stages().get(0).p95TaskDurationMillis());
+        assertEquals(200L, parsedEventLog.stages().get(0).p99TaskDurationMillis());
+        assertEquals(100, parsedEventLog.stages().get(0).taskDurationMillis().size());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("too_many_tiny_tasks", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(15, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(100, parsedEventLog.bottlenecks().get(0).evidence().get("completedTasks"));
+        assertEquals(200L, parsedEventLog.bottlenecks().get(0).evidence().get("avgTaskDurationMillis"));
+        assertEquals(200L, parsedEventLog.bottlenecks().get(0).evidence().get("p95TaskDurationMillis"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("reduce-tiny-task-overhead", parsedEventLog.recommendations().get(0).id());
     }
 
     @Test

@@ -23,6 +23,8 @@ public final class RecommendationEngine {
                 recommendations.add(memorySpillSkewRecommendation(bottleneck));
             } else if ("disk_spill_skew".equals(bottleneck.type())) {
                 recommendations.add(diskSpillSkewRecommendation(bottleneck));
+            } else if ("too_many_tiny_tasks".equals(bottleneck.type())) {
+                recommendations.add(tinyTaskRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -127,6 +129,19 @@ public final class RecommendationEngine {
                         + "Disk spill skew is often expensive because a small number of tasks can dominate stage "
                         + "runtime. Inspect skewed partition keys, shuffle read sizes, joins, aggregations, and sort "
                         + "operators before changing executor memory.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation tinyTaskRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "reduce-tiny-task-overhead",
+                bottleneck.severity(),
+                "Reduce tiny task overhead",
+                "Stage %d ran many very short tasks. ".formatted(bottleneck.stageId())
+                        + "Scheduler overhead may be a meaningful part of runtime. Consider reducing "
+                        + "spark.sql.shuffle.partitions, coalescing after heavy filters, compacting small input "
+                        + "files, and avoiding unnecessary repartition calls that create many tiny partitions.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

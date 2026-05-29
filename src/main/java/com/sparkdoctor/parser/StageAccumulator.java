@@ -13,6 +13,7 @@ final class StageAccumulator {
     private long totalTaskDurationMillis;
     private Long minTaskDurationMillis;
     private Long maxTaskDurationMillis;
+    private final List<Long> taskDurationMillis = new ArrayList<>();
     private long shuffleReadBytes;
     private Long maxTaskShuffleReadBytes;
     private final List<Long> taskShuffleReadBytes = new ArrayList<>();
@@ -35,6 +36,7 @@ final class StageAccumulator {
     void addTaskDuration(long durationMillis) {
         completedTasks++;
         totalTaskDurationMillis += durationMillis;
+        taskDurationMillis.add(durationMillis);
         minTaskDurationMillis = minTaskDurationMillis == null
                 ? durationMillis
                 : Math.min(minTaskDurationMillis, durationMillis);
@@ -66,6 +68,9 @@ final class StageAccumulator {
 
     StageAnalysis toStageAnalysis() {
         Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
+        List<Long> sortedTaskDurationMillis = taskDurationMillis.stream()
+                .sorted(Comparator.naturalOrder())
+                .toList();
         List<Long> sortedTaskShuffleReadBytes = taskShuffleReadBytes.stream()
                 .sorted(Comparator.naturalOrder())
                 .toList();
@@ -83,6 +88,10 @@ final class StageAccumulator {
                 minTaskDurationMillis,
                 maxTaskDurationMillis,
                 avgTaskDurationMillis,
+                median(sortedTaskDurationMillis),
+                percentile(sortedTaskDurationMillis, 0.95),
+                percentile(sortedTaskDurationMillis, 0.99),
+                sortedTaskDurationMillis,
                 shuffleReadBytes,
                 maxTaskShuffleReadBytes,
                 median(sortedTaskShuffleReadBytes),

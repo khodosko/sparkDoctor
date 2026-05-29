@@ -57,6 +57,8 @@ Current summary and stage metrics include:
 - failed stage details and failure reasons
 - SQL execution descriptions, timing, and physical plan text
 - min, max, and average task duration
+- median, p95, and p99 task duration
+- per-task duration distribution
 - total shuffle read bytes
 - max task shuffle read bytes
 - median, p95, and p99 task shuffle read bytes
@@ -217,6 +219,26 @@ Example:
 medianTaskMemoryBytesSpilled = 10 MiB
 maxTaskMemoryBytesSpilled = 300 MiB
 skewRatio = 30.0
+severity = medium
+```
+
+### Too Many Tiny Tasks
+
+Reports `too_many_tiny_tasks` when a stage runs many very short tasks where scheduler overhead may be a meaningful part of runtime.
+
+Reports when:
+
+- stage has at least 100 completed tasks
+- average task duration is at most 500 ms
+- p95 task duration is at most 1000 ms
+- and average shuffle read per task is at most 1 MiB, when shuffle read metrics are present
+
+Example:
+
+```text
+completedTasks = 100
+avgTaskDurationMillis = 200
+p95TaskDurationMillis = 200
 severity = medium
 ```
 
