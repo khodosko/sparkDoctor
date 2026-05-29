@@ -6,6 +6,7 @@ import com.sparkdoctor.analysis.FailureDetector;
 import com.sparkdoctor.analysis.LowShuffleParallelismDetector;
 import com.sparkdoctor.analysis.OversizedShufflePartitionDetector;
 import com.sparkdoctor.analysis.RecommendationEngine;
+import com.sparkdoctor.analysis.RetryWasteDetector;
 import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
@@ -53,6 +54,7 @@ public final class SparkEventLogParser {
     private final SpillPressureDetector spillPressureDetector;
     private final SpillSkewDetector spillSkewDetector;
     private final TinyTaskDetector tinyTaskDetector;
+    private final RetryWasteDetector retryWasteDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
@@ -67,6 +69,7 @@ public final class SparkEventLogParser {
                 new SpillPressureDetector(),
                 new SpillSkewDetector(),
                 new TinyTaskDetector(),
+                new RetryWasteDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
     }
@@ -81,6 +84,7 @@ public final class SparkEventLogParser {
             SpillPressureDetector spillPressureDetector,
             SpillSkewDetector spillSkewDetector,
             TinyTaskDetector tinyTaskDetector,
+            RetryWasteDetector retryWasteDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
@@ -92,6 +96,7 @@ public final class SparkEventLogParser {
         this.spillPressureDetector = spillPressureDetector;
         this.spillSkewDetector = spillSkewDetector;
         this.tinyTaskDetector = tinyTaskDetector;
+        this.retryWasteDetector = retryWasteDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
@@ -207,7 +212,12 @@ public final class SparkEventLogParser {
                 Integer stageAttemptId = stageAttemptId(event, event.get("Stage Info"));
                 Long taskIndex = taskIndex(event);
                 Long taskId = taskId(event);
+                Long taskDurationMillis = taskDurationMillis(event);
                 if (!isSuccessfulTaskEnd(event)) {
+                    if (stageId != null) {
+                        stages.computeIfAbsent(stageId, StageAccumulator::new)
+                                .addFailedTaskAttempt(taskDurationMillis, taskEndReason(event));
+                    }
                     continue;
                 }
                 String taskKey = taskKey(stageId, stageAttemptId, taskIndex, taskId);
@@ -218,7 +228,6 @@ public final class SparkEventLogParser {
                     continue;
                 }
 
-                Long taskDurationMillis = taskDurationMillis(event);
                 Long shuffleReadBytes = shuffleReadBytes(event);
                 TaskSpillMetrics spillMetrics = spillMetrics(event);
                 successfulTaskAttempts.put(
@@ -274,6 +283,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
+        bottlenecks.addAll(retryWasteDetector.detect(stageAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
@@ -444,6 +454,15 @@ public final class SparkEventLogParser {
 
         String reason = textOrNull(taskEndReason, "Reason");
         return reason == null || "Success".equals(reason);
+    }
+
+    private String taskEndReason(JsonNode event) {
+        JsonNode taskEndReason = event.get("Task End Reason");
+        if (taskEndReason == null || taskEndReason.isNull()) {
+            return null;
+        }
+
+        return textOrNull(taskEndReason, "Reason");
     }
 
     private boolean isSuccessfulJobEnd(JsonNode event) {

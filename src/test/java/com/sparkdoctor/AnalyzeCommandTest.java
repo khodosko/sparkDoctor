@@ -538,6 +538,62 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesRetryWasteBottleneckForRetryWasteFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("retry-waste-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/retry-waste-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: retry_waste_customer_etl"));
+        assertTrue(output.toString().contains("Tasks: 3"));
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains("Top bottlenecks:"));
+        assertTrue(output.toString().contains(
+                "- [medium] retry_waste (stage 16): Stage 16 has retry waste from failed task attempts."));
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("retry_waste_customer_etl", json.path("application").path("name").asText());
+        assertEquals(3, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(3, json.path("stages").get(0).path("completedTasks").asInt());
+        assertEquals(3, json.path("stages").get(0).path("failedTaskAttempts").asInt());
+        assertEquals(30_000L, json.path("stages").get(0).path("failedTaskAttemptDurationMillis").asLong());
+        assertEquals(2, json.path("stages").get(0).path("failedTaskAttemptReasons").size());
+        assertEquals("ExceptionFailure", json.path("stages").get(0).path("failedTaskAttemptReasons").get(0).asText());
+        assertEquals("ExecutorLostFailure", json.path("stages").get(0).path("failedTaskAttemptReasons").get(1).asText());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("retry_waste", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(16, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(
+                3,
+                json.path("bottlenecks").get(0).path("evidence").path("failedTaskAttempts").asInt());
+        assertEquals(
+                30_000L,
+                json.path("bottlenecks")
+                        .get(0)
+                        .path("evidence")
+                        .path("failedTaskAttemptDurationMillis")
+                        .asLong());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("investigate-retry-waste", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("retry_waste", json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(16, json.path("recommendations").get(0).path("stageId").asInt());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate retry waste"));
+        assertTrue(recommendationsMarkdown.contains("- Severity: medium"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 16"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: retry_waste"));
+    }
+
+    @Test
     void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("failed-report");
         StringWriter output = new StringWriter();

@@ -1,0 +1,10 @@
+{"Event":"SparkListenerApplicationStart","App Name":"retry_waste_customer_etl","App ID":"app-retry-waste-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":0,"Submission Time":1778846401000,"Stage IDs":[16]}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":16,"Stage Name":"retry-heavy transform","Number of Tasks":3}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"ExceptionFailure"},"Task Info":{"Task ID":1600,"Index":0,"Attempt":0,"Launch Time":0,"Finish Time":10000,"Successful":false},"Task Metrics":{}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"ExceptionFailure"},"Task Info":{"Task ID":1601,"Index":1,"Attempt":0,"Launch Time":0,"Finish Time":10000,"Successful":false},"Task Metrics":{}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"ExecutorLostFailure"},"Task Info":{"Task ID":1602,"Index":2,"Attempt":0,"Launch Time":0,"Finish Time":10000,"Successful":false},"Task Metrics":{}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"Success"},"Task Info":{"Task ID":1603,"Index":0,"Attempt":1,"Launch Time":10000,"Finish Time":12000,"Successful":true},"Task Metrics":{}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"Success"},"Task Info":{"Task ID":1604,"Index":1,"Attempt":1,"Launch Time":10000,"Finish Time":12000,"Successful":true},"Task Metrics":{}}
+{"Event":"SparkListenerTaskEnd","Stage ID":16,"Stage Attempt ID":0,"Task Type":"ResultTask","Task End Reason":{"Reason":"Success"},"Task Info":{"Task ID":1605,"Index":2,"Attempt":1,"Launch Time":10000,"Finish Time":12000,"Successful":true},"Task Metrics":{}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}

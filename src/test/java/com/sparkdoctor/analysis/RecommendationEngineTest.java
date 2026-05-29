@@ -188,6 +188,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForRetryWaste() {
+        Bottleneck bottleneck = new Bottleneck(
+                "retry_waste",
+                "medium",
+                4,
+                "Stage 4 has retry waste from failed task attempts.",
+                Map.of("failedTaskAttempts", 3));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-retry-waste", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate retry waste", recommendation.title());
+        assertEquals("retry_waste", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("failed task reasons"));
+        assertTrue(recommendation.description().contains("Fix retry instability"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",

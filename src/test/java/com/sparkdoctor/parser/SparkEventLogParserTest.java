@@ -238,6 +238,9 @@ final class SparkEventLogParserTest {
         assertEquals(20L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
         assertEquals(List.of(100L, 200L), parsedEventLog.stages().get(0).taskMemoryBytesSpilled());
         assertEquals(List.of(10L, 20L), parsedEventLog.stages().get(0).taskDiskBytesSpilled());
+        assertEquals(1, parsedEventLog.stages().get(0).failedTaskAttempts());
+        assertEquals(10_000L, parsedEventLog.stages().get(0).failedTaskAttemptDurationMillis());
+        assertEquals(List.of("ExceptionFailure"), parsedEventLog.stages().get(0).failedTaskAttemptReasons());
     }
 
     @Test
@@ -551,6 +554,39 @@ final class SparkEventLogParserTest {
         assertEquals(200L, parsedEventLog.bottlenecks().get(0).evidence().get("p95TaskDurationMillis"));
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("reduce-tiny-task-overhead", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
+    void parsesRetryWasteFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/retry-waste-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-retry-waste-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("retry_waste_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(3, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(16, parsedEventLog.stages().get(0).id());
+        assertEquals(3, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(3, parsedEventLog.stages().get(0).failedTaskAttempts());
+        assertEquals(30_000L, parsedEventLog.stages().get(0).failedTaskAttemptDurationMillis());
+        assertEquals(
+                List.of("ExceptionFailure", "ExecutorLostFailure"),
+                parsedEventLog.stages().get(0).failedTaskAttemptReasons());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("retry_waste", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(16, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(3, parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttempts"));
+        assertEquals(30_000L, parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttemptDurationMillis"));
+        assertEquals(
+                List.of("ExceptionFailure", "ExecutorLostFailure"),
+                parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttemptReasons"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-retry-waste", parsedEventLog.recommendations().get(0).id());
     }
 
     @Test

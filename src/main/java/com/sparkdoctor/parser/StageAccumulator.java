@@ -14,6 +14,9 @@ final class StageAccumulator {
     private Long minTaskDurationMillis;
     private Long maxTaskDurationMillis;
     private final List<Long> taskDurationMillis = new ArrayList<>();
+    private int failedTaskAttempts;
+    private long failedTaskAttemptDurationMillis;
+    private final List<String> failedTaskAttemptReasons = new ArrayList<>();
     private long shuffleReadBytes;
     private Long maxTaskShuffleReadBytes;
     private final List<Long> taskShuffleReadBytes = new ArrayList<>();
@@ -43,6 +46,16 @@ final class StageAccumulator {
         maxTaskDurationMillis = maxTaskDurationMillis == null
                 ? durationMillis
                 : Math.max(maxTaskDurationMillis, durationMillis);
+    }
+
+    void addFailedTaskAttempt(Long durationMillis, String reason) {
+        failedTaskAttempts++;
+        if (durationMillis != null) {
+            failedTaskAttemptDurationMillis += durationMillis;
+        }
+        if (reason != null && !reason.isBlank() && !failedTaskAttemptReasons.contains(reason)) {
+            failedTaskAttemptReasons.add(reason);
+        }
     }
 
     void addShuffleReadBytes(long taskShuffleReadBytes) {
@@ -92,6 +105,9 @@ final class StageAccumulator {
                 percentile(sortedTaskDurationMillis, 0.95),
                 percentile(sortedTaskDurationMillis, 0.99),
                 sortedTaskDurationMillis,
+                failedTaskAttempts,
+                failedTaskAttemptDurationMillis,
+                failedTaskAttemptReasons,
                 shuffleReadBytes,
                 maxTaskShuffleReadBytes,
                 median(sortedTaskShuffleReadBytes),

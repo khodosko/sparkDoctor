@@ -59,6 +59,7 @@ Current summary and stage metrics include:
 - min, max, and average task duration
 - median, p95, and p99 task duration
 - per-task duration distribution
+- failed task attempt count, duration, and reason summaries
 - total shuffle read bytes
 - max task shuffle read bytes
 - median, p95, and p99 task shuffle read bytes
@@ -239,6 +240,28 @@ Example:
 completedTasks = 100
 avgTaskDurationMillis = 200
 p95TaskDurationMillis = 200
+severity = medium
+```
+
+### Retry Waste
+
+Reports `retry_waste` when failed task attempts add meaningful runtime even if the stage eventually has successful task attempts.
+
+Reports when:
+
+- failed task attempts are at least 3
+- total failed task attempt duration is at least 30 seconds
+
+Severity is `high` when:
+
+- total failed task attempt duration is at least 5 minutes
+
+Example:
+
+```text
+failedTaskAttempts = 3
+failedTaskAttemptDurationMillis = 30000
+failedTaskAttemptReasons = [ExceptionFailure, ExecutorLostFailure]
 severity = medium
 ```
 
@@ -473,6 +496,9 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/oversized-shuffle-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/low-shuffle-parallelism-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/memory-spill-skew-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/tiny-tasks-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/retry-waste-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
 ```

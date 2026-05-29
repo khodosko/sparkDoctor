@@ -25,6 +25,8 @@ public final class RecommendationEngine {
                 recommendations.add(diskSpillSkewRecommendation(bottleneck));
             } else if ("too_many_tiny_tasks".equals(bottleneck.type())) {
                 recommendations.add(tinyTaskRecommendation(bottleneck));
+            } else if ("retry_waste".equals(bottleneck.type())) {
+                recommendations.add(retryWasteRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -142,6 +144,20 @@ public final class RecommendationEngine {
                         + "Scheduler overhead may be a meaningful part of runtime. Consider reducing "
                         + "spark.sql.shuffle.partitions, coalescing after heavy filters, compacting small input "
                         + "files, and avoiding unnecessary repartition calls that create many tiny partitions.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation retryWasteRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-retry-waste",
+                bottleneck.severity(),
+                "Investigate retry waste",
+                "Stage %d spent meaningful time in failed task attempts before successful work completed. "
+                        .formatted(bottleneck.stageId())
+                        + "Inspect failed task reasons and executor logs for executor loss, out-of-memory errors, "
+                        + "shuffle fetch failures, bad input records, preemption, or unstable worker nodes. "
+                        + "Fix retry instability before normal performance tuning.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }
