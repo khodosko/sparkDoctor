@@ -1,9 +1,14 @@
 package com.sparkdoctor.parser;
 
 import com.sparkdoctor.model.StageAnalysis;
+import com.sparkdoctor.model.WorkerSummary;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 final class StageAccumulator {
     private final int id;
@@ -17,6 +22,8 @@ final class StageAccumulator {
     private int failedTaskAttempts;
     private long failedTaskAttemptDurationMillis;
     private final List<String> failedTaskAttemptReasons = new ArrayList<>();
+    private final Map<String, WorkerStats> executorStats = new LinkedHashMap<>();
+    private final Map<String, WorkerStats> hostStats = new LinkedHashMap<>();
     private long shuffleReadBytes;
     private Long maxTaskShuffleReadBytes;
     private final List<Long> taskShuffleReadBytes = new ArrayList<>();
@@ -55,6 +62,18 @@ final class StageAccumulator {
         }
         if (reason != null && !reason.isBlank() && !failedTaskAttemptReasons.contains(reason)) {
             failedTaskAttemptReasons.add(reason);
+        }
+    }
+
+    void addWorkerTask(Long durationMillis, String executorId, String host) {
+        if (durationMillis == null) {
+            return;
+        }
+        if (executorId != null && !executorId.isBlank()) {
+            executorStats.computeIfAbsent(executorId, WorkerStats::new).addTask(durationMillis);
+        }
+        if (host != null && !host.isBlank()) {
+            hostStats.computeIfAbsent(host, WorkerStats::new).addTask(durationMillis);
         }
     }
 
@@ -108,6 +127,8 @@ final class StageAccumulator {
                 failedTaskAttempts,
                 failedTaskAttemptDurationMillis,
                 failedTaskAttemptReasons,
+                workerSummaries(executorStats),
+                workerSummaries(hostStats),
                 shuffleReadBytes,
                 maxTaskShuffleReadBytes,
                 median(sortedTaskShuffleReadBytes),
@@ -150,5 +171,54 @@ final class StageAccumulator {
 
         int index = (int) Math.ceil(percentile * sortedValues.size()) - 1;
         return sortedValues.get(Math.max(0, Math.min(index, sortedValues.size() - 1)));
+    }
+
+    private List<WorkerSummary> workerSummaries(Map<String, WorkerStats> workers) {
+        if (workers.isEmpty() || completedTasks == 0 || totalTaskDurationMillis == 0) {
+            return List.of();
+        }
+
+        return workers.values().stream()
+                .map(worker -> new WorkerSummary(
+                        worker.id(),
+                        worker.taskCount(),
+                        worker.taskDurationMillis(),
+                        rounded((double) worker.taskCount() / completedTasks),
+                        rounded((double) worker.taskDurationMillis() / totalTaskDurationMillis)))
+                .sorted(Comparator.comparingLong(WorkerSummary::taskDurationMillis).reversed())
+                .toList();
+    }
+
+    private double rounded(double value) {
+        return BigDecimal.valueOf(value)
+                .setScale(4, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private static final class WorkerStats {
+        private final String id;
+        private int taskCount;
+        private long taskDurationMillis;
+
+        private WorkerStats(String id) {
+            this.id = id;
+        }
+
+        private void addTask(long durationMillis) {
+            taskCount++;
+            taskDurationMillis += durationMillis;
+        }
+
+        private String id() {
+            return id;
+        }
+
+        private int taskCount() {
+            return taskCount;
+        }
+
+        private long taskDurationMillis() {
+            return taskDurationMillis;
+        }
     }
 }

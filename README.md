@@ -60,6 +60,7 @@ Current summary and stage metrics include:
 - median, p95, and p99 task duration
 - per-task duration distribution
 - failed task attempt count, duration, and reason summaries
+- executor and host task distribution summaries
 - total shuffle read bytes
 - max task shuffle read bytes
 - median, p95, and p99 task shuffle read bytes
@@ -262,6 +263,26 @@ Example:
 failedTaskAttempts = 3
 failedTaskAttemptDurationMillis = 30000
 failedTaskAttemptReasons = [ExceptionFailure, ExecutorLostFailure]
+severity = medium
+```
+
+### Executor And Host Imbalance
+
+Reports `executor_imbalance` or `host_imbalance` when one executor or host carries most of the successful task work in a stage.
+
+Reports when:
+
+- stage has at least 10 completed tasks
+- at least 2 executors or hosts are observed
+- one executor or host accounts for at least 75% of successful task duration
+- that same executor or host accounts for at least 50% of successful tasks
+
+Example:
+
+```text
+executorId = executor-1
+workerTaskShare = 0.8
+workerDurationShare = 0.8
 severity = medium
 ```
 
@@ -499,6 +520,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/memory-spill-skew-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/tiny-tasks-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/retry-waste-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/worker-imbalanced-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
 ```

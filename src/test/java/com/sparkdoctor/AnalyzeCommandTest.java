@@ -594,6 +594,58 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesWorkerImbalanceBottlenecksForWorkerImbalancedFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("worker-imbalanced-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/worker-imbalanced-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: worker_imbalanced_customer_etl"));
+        assertTrue(output.toString().contains("Tasks: 10"));
+        assertTrue(output.toString().contains("Issues detected: 2"));
+        assertTrue(output.toString().contains("Recommendations: 2"));
+        assertTrue(output.toString().contains("Top bottlenecks:"));
+        assertTrue(output.toString().contains(
+                "- [medium] executor_imbalance (stage 17): Stage 17 has executor imbalance."));
+        assertTrue(output.toString().contains(
+                "- [medium] host_imbalance (stage 17): Stage 17 has host imbalance."));
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("worker_imbalanced_customer_etl", json.path("application").path("name").asText());
+        assertEquals(10, json.path("summary").path("tasks").asInt());
+        assertEquals(2, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(2, json.path("stages").get(0).path("executorSummaries").size());
+        assertEquals("executor-1", json.path("stages").get(0).path("executorSummaries").get(0).path("id").asText());
+        assertEquals(8, json.path("stages").get(0).path("executorSummaries").get(0).path("taskCount").asInt());
+        assertEquals(
+                8000L,
+                json.path("stages").get(0).path("executorSummaries").get(0).path("taskDurationMillis").asLong());
+        assertEquals(0.8, json.path("stages").get(0).path("executorSummaries").get(0).path("taskShare").asDouble());
+        assertEquals(0.8, json.path("stages").get(0).path("executorSummaries").get(0).path("durationShare").asDouble());
+        assertEquals(2, json.path("stages").get(0).path("hostSummaries").size());
+        assertEquals("host-a", json.path("stages").get(0).path("hostSummaries").get(0).path("id").asText());
+        assertEquals("executor_imbalance", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("host_imbalance", json.path("bottlenecks").get(1).path("type").asText());
+        assertEquals(
+                "executor-1",
+                json.path("bottlenecks").get(0).path("evidence").path("executorId").asText());
+        assertEquals("host-a", json.path("bottlenecks").get(1).path("evidence").path("host").asText());
+        assertEquals("investigate-executor-imbalance", json.path("recommendations").get(0).path("id").asText());
+        assertEquals("investigate-host-imbalance", json.path("recommendations").get(1).path("id").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate executor imbalance"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: executor_imbalance"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate host imbalance"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: host_imbalance"));
+    }
+
+    @Test
     void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("failed-report");
         StringWriter output = new StringWriter();

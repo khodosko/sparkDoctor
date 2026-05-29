@@ -590,6 +590,39 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void parsesWorkerImbalanceFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/worker-imbalanced-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-worker-imbalanced-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("worker_imbalanced_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(10, parsedEventLog.analysisSummary().tasks());
+        assertEquals(2, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(17, parsedEventLog.stages().get(0).id());
+        assertEquals(10, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(2, parsedEventLog.stages().get(0).executorSummaries().size());
+        assertEquals("executor-1", parsedEventLog.stages().get(0).executorSummaries().get(0).id());
+        assertEquals(8, parsedEventLog.stages().get(0).executorSummaries().get(0).taskCount());
+        assertEquals(8000L, parsedEventLog.stages().get(0).executorSummaries().get(0).taskDurationMillis());
+        assertEquals(0.8, parsedEventLog.stages().get(0).executorSummaries().get(0).taskShare());
+        assertEquals(0.8, parsedEventLog.stages().get(0).executorSummaries().get(0).durationShare());
+        assertEquals(2, parsedEventLog.stages().get(0).hostSummaries().size());
+        assertEquals("host-a", parsedEventLog.stages().get(0).hostSummaries().get(0).id());
+        assertEquals(2, parsedEventLog.bottlenecks().size());
+        assertEquals("executor_imbalance", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("host_imbalance", parsedEventLog.bottlenecks().get(1).type());
+        assertEquals("executor-1", parsedEventLog.bottlenecks().get(0).evidence().get("executorId"));
+        assertEquals("host-a", parsedEventLog.bottlenecks().get(1).evidence().get("host"));
+        assertEquals(2, parsedEventLog.recommendations().size());
+        assertEquals("investigate-executor-imbalance", parsedEventLog.recommendations().get(0).id());
+        assertEquals("investigate-host-imbalance", parsedEventLog.recommendations().get(1).id());
+    }
+
+    @Test
     void parsesFailedJobAndStageFromFixtureFile() throws Exception {
         Path fixture = Path.of("src/test/resources/fixtures/failed-eventlog.json");
 

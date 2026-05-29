@@ -27,6 +27,10 @@ public final class RecommendationEngine {
                 recommendations.add(tinyTaskRecommendation(bottleneck));
             } else if ("retry_waste".equals(bottleneck.type())) {
                 recommendations.add(retryWasteRecommendation(bottleneck));
+            } else if ("executor_imbalance".equals(bottleneck.type())) {
+                recommendations.add(executorImbalanceRecommendation(bottleneck));
+            } else if ("host_imbalance".equals(bottleneck.type())) {
+                recommendations.add(hostImbalanceRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -158,6 +162,32 @@ public final class RecommendationEngine {
                         + "Inspect failed task reasons and executor logs for executor loss, out-of-memory errors, "
                         + "shuffle fetch failures, bad input records, preemption, or unstable worker nodes. "
                         + "Fix retry instability before normal performance tuning.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation executorImbalanceRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-executor-imbalance",
+                bottleneck.severity(),
+                "Investigate executor imbalance",
+                "Stage %d had one executor carrying most of the successful task work. "
+                        .formatted(bottleneck.stageId())
+                        + "Check whether partition placement, data locality, dynamic allocation, executor loss, "
+                        + "or uneven input splits caused work to concentrate on one executor.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation hostImbalanceRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-host-imbalance",
+                bottleneck.severity(),
+                "Investigate host imbalance",
+                "Stage %d had one host carrying most of the successful task work. "
+                        .formatted(bottleneck.stageId())
+                        + "Check cluster placement, data locality, node health, noisy neighbors, and whether "
+                        + "available executors were spread evenly across hosts.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

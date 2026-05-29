@@ -12,6 +12,7 @@ import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.analysis.TinyTaskDetector;
+import com.sparkdoctor.analysis.WorkerImbalanceDetector;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
@@ -55,6 +56,7 @@ public final class SparkEventLogParser {
     private final SpillSkewDetector spillSkewDetector;
     private final TinyTaskDetector tinyTaskDetector;
     private final RetryWasteDetector retryWasteDetector;
+    private final WorkerImbalanceDetector workerImbalanceDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
@@ -70,6 +72,7 @@ public final class SparkEventLogParser {
                 new SpillSkewDetector(),
                 new TinyTaskDetector(),
                 new RetryWasteDetector(),
+                new WorkerImbalanceDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
     }
@@ -85,6 +88,7 @@ public final class SparkEventLogParser {
             SpillSkewDetector spillSkewDetector,
             TinyTaskDetector tinyTaskDetector,
             RetryWasteDetector retryWasteDetector,
+            WorkerImbalanceDetector workerImbalanceDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
@@ -97,6 +101,7 @@ public final class SparkEventLogParser {
         this.spillSkewDetector = spillSkewDetector;
         this.tinyTaskDetector = tinyTaskDetector;
         this.retryWasteDetector = retryWasteDetector;
+        this.workerImbalanceDetector = workerImbalanceDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
@@ -232,7 +237,13 @@ public final class SparkEventLogParser {
                 TaskSpillMetrics spillMetrics = spillMetrics(event);
                 successfulTaskAttempts.put(
                         new TaskAttemptKey(stageId, stageAttemptId == null ? 0 : stageAttemptId, taskIndex),
-                        new ParsedTaskAttempt(stageId, taskDurationMillis, shuffleReadBytes, spillMetrics));
+                        new ParsedTaskAttempt(
+                                stageId,
+                                taskDurationMillis,
+                                shuffleReadBytes,
+                                spillMetrics,
+                                executorId(event),
+                                host(event)));
             } else if (isSqlEvent(eventType, SQL_EXECUTION_START)) {
                 Long executionId = longOrNull(event, "executionId");
                 if (executionId != null) {
@@ -262,6 +273,7 @@ public final class SparkEventLogParser {
             if (taskAttempt.taskDurationMillis() != null) {
                 stage.addTaskDuration(taskAttempt.taskDurationMillis());
             }
+            stage.addWorkerTask(taskAttempt.taskDurationMillis(), taskAttempt.executorId(), taskAttempt.host());
             if (taskAttempt.shuffleReadBytes() != null) {
                 stage.addShuffleReadBytes(taskAttempt.shuffleReadBytes());
             }
@@ -284,6 +296,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(spillSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
         bottlenecks.addAll(retryWasteDetector.detect(stageAnalyses));
+        bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
@@ -412,6 +425,24 @@ public final class SparkEventLogParser {
         }
 
         return longOrNull(taskInfo, "Task ID");
+    }
+
+    private String executorId(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        if (taskInfo == null || taskInfo.isNull()) {
+            return null;
+        }
+
+        return textOrNull(taskInfo, "Executor ID");
+    }
+
+    private String host(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        if (taskInfo == null || taskInfo.isNull()) {
+            return null;
+        }
+
+        return textOrNull(taskInfo, "Host");
     }
 
     private Long taskIndex(JsonNode event) {
@@ -552,7 +583,9 @@ public final class SparkEventLogParser {
             int stageId,
             Long taskDurationMillis,
             Long shuffleReadBytes,
-            TaskSpillMetrics spillMetrics) {}
+            TaskSpillMetrics spillMetrics,
+            String executorId,
+            String host) {}
 
     private final class SqlExecutionAccumulator {
         private final long id;

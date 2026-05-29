@@ -210,6 +210,50 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForExecutorImbalance() {
+        Bottleneck bottleneck = new Bottleneck(
+                "executor_imbalance",
+                "medium",
+                4,
+                "Stage 4 has executor imbalance.",
+                Map.of("executorId", "executor-1"));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-executor-imbalance", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate executor imbalance", recommendation.title());
+        assertEquals("executor_imbalance", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("dynamic allocation"));
+        assertTrue(recommendation.description().contains("uneven input splits"));
+    }
+
+    @Test
+    void recommendsInvestigationForHostImbalance() {
+        Bottleneck bottleneck = new Bottleneck(
+                "host_imbalance",
+                "medium",
+                4,
+                "Stage 4 has host imbalance.",
+                Map.of("host", "host-a"));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-host-imbalance", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate host imbalance", recommendation.title());
+        assertEquals("host_imbalance", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("node health"));
+        assertTrue(recommendation.description().contains("noisy neighbors"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",
