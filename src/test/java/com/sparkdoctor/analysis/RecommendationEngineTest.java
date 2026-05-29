@@ -122,6 +122,50 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForMemorySpillSkew() {
+        Bottleneck bottleneck = new Bottleneck(
+                "memory_spill_skew",
+                "medium",
+                4,
+                "Stage 4 has memory spill skew.",
+                Map.of("skewRatio", 30.0));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-memory-spill-skew", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate memory spill skew", recommendation.title());
+        assertEquals("memory_spill_skew", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("task spill, duration, and shuffle read sizes"));
+        assertTrue(recommendation.description().contains("executor memory only after confirming the skew source"));
+    }
+
+    @Test
+    void recommendsInvestigationForDiskSpillSkew() {
+        Bottleneck bottleneck = new Bottleneck(
+                "disk_spill_skew",
+                "high",
+                4,
+                "Stage 4 has disk spill skew.",
+                Map.of("skewRatio", 15.0));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-disk-spill-skew", recommendation.id());
+        assertEquals("high", recommendation.severity());
+        assertEquals("Investigate disk spill skew", recommendation.title());
+        assertEquals("disk_spill_skew", recommendation.relatedBottleneckType());
+        assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("dominate stage runtime"));
+        assertTrue(recommendation.description().contains("shuffle read sizes"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",

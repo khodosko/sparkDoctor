@@ -48,7 +48,15 @@ final class AnalysisJsonWriterTest {
                         300L,
                         700L,
                         200L,
-                        500L)),
+                        500L,
+                        150L,
+                        200L,
+                        200L,
+                        List.of(100L, 200L),
+                        350L,
+                        500L,
+                        500L,
+                        List.of(200L, 500L))),
                 List.of(new SqlExecution(
                         8L,
                         8L,
@@ -113,6 +121,18 @@ final class AnalysisJsonWriterTest {
         assertEquals(700L, json.path("stages").get(0).path("diskBytesSpilled").asLong());
         assertEquals(200L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
         assertEquals(500L, json.path("stages").get(0).path("maxTaskDiskBytesSpilled").asLong());
+        assertEquals(150L, json.path("stages").get(0).path("medianTaskMemoryBytesSpilled").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("p95TaskMemoryBytesSpilled").asLong());
+        assertEquals(200L, json.path("stages").get(0).path("p99TaskMemoryBytesSpilled").asLong());
+        assertEquals(2, json.path("stages").get(0).path("taskMemoryBytesSpilled").size());
+        assertEquals(100L, json.path("stages").get(0).path("taskMemoryBytesSpilled").get(0).asLong());
+        assertEquals(200L, json.path("stages").get(0).path("taskMemoryBytesSpilled").get(1).asLong());
+        assertEquals(350L, json.path("stages").get(0).path("medianTaskDiskBytesSpilled").asLong());
+        assertEquals(500L, json.path("stages").get(0).path("p95TaskDiskBytesSpilled").asLong());
+        assertEquals(500L, json.path("stages").get(0).path("p99TaskDiskBytesSpilled").asLong());
+        assertEquals(2, json.path("stages").get(0).path("taskDiskBytesSpilled").size());
+        assertEquals(200L, json.path("stages").get(0).path("taskDiskBytesSpilled").get(0).asLong());
+        assertEquals(500L, json.path("stages").get(0).path("taskDiskBytesSpilled").get(1).asLong());
         assertEquals(1, json.path("sqlExecutions").size());
         assertEquals(8L, json.path("sqlExecutions").get(0).path("id").asLong());
         assertEquals("collect", json.path("sqlExecutions").get(0).path("description").asText());

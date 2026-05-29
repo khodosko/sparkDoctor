@@ -14,6 +14,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - summarize Spark applications, jobs, stages, and tasks
 - summarize Spark SQL executions when SQL listener events are available
 - detect common Spark bottlenecks
+- detect task-level memory and disk spill skew
 - generate `analysis.json`
 - generate `recommendations.md`
 - generate `sql-executions.md` when SQL execution plans are present

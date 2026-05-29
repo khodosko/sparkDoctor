@@ -65,6 +65,9 @@ Current summary and stage metrics include:
 - total disk bytes spilled
 - max task memory bytes spilled
 - max task disk bytes spilled
+- median, p95, and p99 task memory bytes spilled
+- median, p95, and p99 task disk bytes spilled
+- per-task memory and disk spill distributions
 
 Failed task attempts are ignored for stage metric aggregation. Successful task attempts are deduplicated by stage ID, stage attempt ID, and task index so retries and speculative attempts do not inflate duration, shuffle, or spill metrics.
 
@@ -182,6 +185,38 @@ Example:
 ```text
 diskBytesSpilled = 300 MiB
 memoryBytesSpilled = 128 MiB
+severity = medium
+```
+
+### Memory And Disk Spill Skew
+
+Reports `memory_spill_skew` or `disk_spill_skew` when one or a few tasks spill much more than the typical task in the same stage.
+
+For memory spill skew:
+
+- stage has at least 10 completed tasks
+- median task memory spill is greater than zero
+- max task memory spill is greater than median task memory spill times 5
+- max task memory spill is greater than 256 MiB
+
+For disk spill skew:
+
+- stage has at least 10 completed tasks
+- median task disk spill is greater than zero
+- max task disk spill is greater than median task disk spill times 5
+- max task disk spill is greater than 128 MiB
+
+Severity is:
+
+- `medium` for `memory_spill_skew`
+- `high` for `disk_spill_skew`
+
+Example:
+
+```text
+medianTaskMemoryBytesSpilled = 10 MiB
+maxTaskMemoryBytesSpilled = 300 MiB
+skewRatio = 30.0
 severity = medium
 ```
 

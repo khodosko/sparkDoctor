@@ -20,6 +20,8 @@ final class StageAccumulator {
     private long diskBytesSpilled;
     private Long maxTaskMemoryBytesSpilled;
     private Long maxTaskDiskBytesSpilled;
+    private final List<Long> taskMemoryBytesSpilled = new ArrayList<>();
+    private final List<Long> taskDiskBytesSpilled = new ArrayList<>();
 
     StageAccumulator(int id) {
         this.id = id;
@@ -52,6 +54,8 @@ final class StageAccumulator {
     void addSpillBytes(long taskMemoryBytesSpilled, long taskDiskBytesSpilled) {
         memoryBytesSpilled += taskMemoryBytesSpilled;
         diskBytesSpilled += taskDiskBytesSpilled;
+        this.taskMemoryBytesSpilled.add(taskMemoryBytesSpilled);
+        this.taskDiskBytesSpilled.add(taskDiskBytesSpilled);
         maxTaskMemoryBytesSpilled = maxTaskMemoryBytesSpilled == null
                 ? taskMemoryBytesSpilled
                 : Math.max(maxTaskMemoryBytesSpilled, taskMemoryBytesSpilled);
@@ -63,6 +67,12 @@ final class StageAccumulator {
     StageAnalysis toStageAnalysis() {
         Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
         List<Long> sortedTaskShuffleReadBytes = taskShuffleReadBytes.stream()
+                .sorted(Comparator.naturalOrder())
+                .toList();
+        List<Long> sortedTaskMemoryBytesSpilled = taskMemoryBytesSpilled.stream()
+                .sorted(Comparator.naturalOrder())
+                .toList();
+        List<Long> sortedTaskDiskBytesSpilled = taskDiskBytesSpilled.stream()
                 .sorted(Comparator.naturalOrder())
                 .toList();
         return new StageAnalysis(
@@ -82,7 +92,15 @@ final class StageAccumulator {
                 memoryBytesSpilled,
                 diskBytesSpilled,
                 maxTaskMemoryBytesSpilled,
-                maxTaskDiskBytesSpilled);
+                maxTaskDiskBytesSpilled,
+                median(sortedTaskMemoryBytesSpilled),
+                percentile(sortedTaskMemoryBytesSpilled, 0.95),
+                percentile(sortedTaskMemoryBytesSpilled, 0.99),
+                sortedTaskMemoryBytesSpilled,
+                median(sortedTaskDiskBytesSpilled),
+                percentile(sortedTaskDiskBytesSpilled, 0.95),
+                percentile(sortedTaskDiskBytesSpilled, 0.99),
+                sortedTaskDiskBytesSpilled);
     }
 
     private Long median(List<Long> sortedValues) {

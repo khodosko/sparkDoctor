@@ -19,6 +19,10 @@ public final class RecommendationEngine {
                 recommendations.add(lowShuffleParallelismRecommendation(bottleneck));
             } else if ("spill_pressure".equals(bottleneck.type())) {
                 recommendations.add(spillPressureRecommendation(bottleneck));
+            } else if ("memory_spill_skew".equals(bottleneck.type())) {
+                recommendations.add(memorySpillSkewRecommendation(bottleneck));
+            } else if ("disk_spill_skew".equals(bottleneck.type())) {
+                recommendations.add(diskSpillSkewRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -95,6 +99,34 @@ public final class RecommendationEngine {
                         + "increase shuffle parallelism if tasks are too large, reduce per-task data before "
                         + "wide operations, and review joins, aggregations, and sorts creating large shuffle state. "
                         + "Consider executor memory changes only after confirming partition sizing and skew.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation memorySpillSkewRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-memory-spill-skew",
+                bottleneck.severity(),
+                "Investigate memory spill skew",
+                "Stage %d has one or more tasks spilling much more memory data than typical tasks. "
+                        .formatted(bottleneck.stageId())
+                        + "Compare task spill, duration, and shuffle read sizes to find skewed keys or oversized "
+                        + "partitions. Repartition or salt hot keys before wide joins and aggregations, reduce "
+                        + "per-task data, and consider executor memory only after confirming the skew source.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation diskSpillSkewRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-disk-spill-skew",
+                bottleneck.severity(),
+                "Investigate disk spill skew",
+                "Stage %d has one or more tasks spilling much more data to disk than typical tasks. "
+                        .formatted(bottleneck.stageId())
+                        + "Disk spill skew is often expensive because a small number of tasks can dominate stage "
+                        + "runtime. Inspect skewed partition keys, shuffle read sizes, joins, aggregations, and sort "
+                        + "operators before changing executor memory.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

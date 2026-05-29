@@ -429,6 +429,59 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesMemorySpillSkewBottleneckForMemorySpillSkewFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("memory-spill-skew-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/memory-spill-skew-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains("Top bottlenecks:"));
+        assertTrue(output.toString().contains(
+                "- [medium] memory_spill_skew (stage 14): Stage 14 has memory spill skew."));
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("memory_spill_skew_customer_etl", json.path("application").path("name").asText());
+        assertEquals(10, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(419430400L, json.path("stages").get(0).path("memoryBytesSpilled").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(10485760L, json.path("stages").get(0).path("medianTaskMemoryBytesSpilled").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("p95TaskMemoryBytesSpilled").asLong());
+        assertEquals(314572800L, json.path("stages").get(0).path("p99TaskMemoryBytesSpilled").asLong());
+        assertEquals(10, json.path("stages").get(0).path("taskMemoryBytesSpilled").size());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("memory_spill_skew", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
+        assertEquals(14, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(
+                10485760L,
+                json.path("bottlenecks").get(0).path("evidence").path("medianTaskMemoryBytesSpilled").asLong());
+        assertEquals(
+                314572800L,
+                json.path("bottlenecks").get(0).path("evidence").path("maxTaskMemoryBytesSpilled").asLong());
+        assertEquals(30.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
+        assertEquals(1, json.path("recommendations").size());
+        assertEquals("investigate-memory-spill-skew", json.path("recommendations").get(0).path("id").asText());
+        assertEquals(
+                "memory_spill_skew",
+                json.path("recommendations").get(0).path("relatedBottleneckType").asText());
+        assertEquals(14, json.path("recommendations").get(0).path("stageId").asInt());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate memory spill skew"));
+        assertTrue(recommendationsMarkdown.contains("- Severity: medium"));
+        assertTrue(recommendationsMarkdown.contains("- Stage ID: 14"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: memory_spill_skew"));
+    }
+
+    @Test
     void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("failed-report");
         StringWriter output = new StringWriter();

@@ -199,6 +199,14 @@ final class SparkEventLogParserTest {
         assertEquals(3500L, parsedEventLog.stages().get(0).diskBytesSpilled());
         assertEquals(4000L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
         assertEquals(3000L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
+        assertEquals(2500L, parsedEventLog.stages().get(0).medianTaskMemoryBytesSpilled());
+        assertEquals(4000L, parsedEventLog.stages().get(0).p95TaskMemoryBytesSpilled());
+        assertEquals(4000L, parsedEventLog.stages().get(0).p99TaskMemoryBytesSpilled());
+        assertEquals(List.of(1000L, 4000L), parsedEventLog.stages().get(0).taskMemoryBytesSpilled());
+        assertEquals(1750L, parsedEventLog.stages().get(0).medianTaskDiskBytesSpilled());
+        assertEquals(3000L, parsedEventLog.stages().get(0).p95TaskDiskBytesSpilled());
+        assertEquals(3000L, parsedEventLog.stages().get(0).p99TaskDiskBytesSpilled());
+        assertEquals(List.of(500L, 3000L), parsedEventLog.stages().get(0).taskDiskBytesSpilled());
     }
 
     @Test
@@ -224,6 +232,8 @@ final class SparkEventLogParserTest {
         assertEquals(30L, parsedEventLog.stages().get(0).diskBytesSpilled());
         assertEquals(200L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
         assertEquals(20L, parsedEventLog.stages().get(0).maxTaskDiskBytesSpilled());
+        assertEquals(List.of(100L, 200L), parsedEventLog.stages().get(0).taskMemoryBytesSpilled());
+        assertEquals(List.of(10L, 20L), parsedEventLog.stages().get(0).taskDiskBytesSpilled());
     }
 
     @Test
@@ -468,6 +478,42 @@ final class SparkEventLogParserTest {
         assertEquals(209715200L, parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskDiskBytesSpilled"));
         assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("reduce-spill-pressure", parsedEventLog.recommendations().get(0).id());
+    }
+
+    @Test
+    void parsesMemorySpillSkewFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/memory-spill-skew-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("app-memory-spill-skew-0001", parsedEventLog.applicationSummary().appId());
+        assertEquals("memory_spill_skew_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.analysisSummary().jobs());
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(10, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(14, parsedEventLog.stages().get(0).id());
+        assertEquals(10, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(419430400L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).maxTaskMemoryBytesSpilled());
+        assertEquals(10485760L, parsedEventLog.stages().get(0).medianTaskMemoryBytesSpilled());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).p95TaskMemoryBytesSpilled());
+        assertEquals(314572800L, parsedEventLog.stages().get(0).p99TaskMemoryBytesSpilled());
+        assertEquals(10, parsedEventLog.stages().get(0).taskMemoryBytesSpilled().size());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("memory_spill_skew", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("medium", parsedEventLog.bottlenecks().get(0).severity());
+        assertEquals(14, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(
+                10485760L,
+                parsedEventLog.bottlenecks().get(0).evidence().get("medianTaskMemoryBytesSpilled"));
+        assertEquals(
+                314572800L,
+                parsedEventLog.bottlenecks().get(0).evidence().get("maxTaskMemoryBytesSpilled"));
+        assertEquals(30.0, parsedEventLog.bottlenecks().get(0).evidence().get("skewRatio"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-memory-spill-skew", parsedEventLog.recommendations().get(0).id());
     }
 
     @Test
