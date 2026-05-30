@@ -42,6 +42,7 @@ These are the next open-source priorities.
 - Add evidence tables for bottlenecks.
 - Add a clearer severity summary.
 - Make recommendation wording more specific to the observed evidence.
+- Annotate SQL DOT graphs with metrics, highlighted bottleneck nodes, and short guidance labels.
 
 ### Better Spark Compatibility
 
