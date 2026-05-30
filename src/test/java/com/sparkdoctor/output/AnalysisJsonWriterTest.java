@@ -154,6 +154,7 @@ final class AnalysisJsonWriterTest {
         assertEquals(800L, json.path("sqlExecutions").get(0).path("durationMillis").asLong());
         assertEquals("Initial Plan", json.path("sqlExecutions").get(0).path("physicalPlanDescription").asText());
         assertEquals("Final Plan", json.path("sqlExecutions").get(0).path("latestPhysicalPlanDescription").asText());
+        assertEquals(0, json.path("sqlExecutions").get(0).path("operatorSummaries").size());
         assertEquals(0, json.path("failedJobs").size());
         assertEquals(0, json.path("failedStages").size());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());

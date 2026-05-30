@@ -31,6 +31,8 @@ public final class RecommendationEngine {
                 recommendations.add(executorImbalanceRecommendation(bottleneck));
             } else if ("host_imbalance".equals(bottleneck.type())) {
                 recommendations.add(hostImbalanceRecommendation(bottleneck));
+            } else if ("sql_many_exchanges".equals(bottleneck.type())) {
+                recommendations.add(sqlManyExchangesRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -188,6 +190,20 @@ public final class RecommendationEngine {
                         .formatted(bottleneck.stageId())
                         + "Check cluster placement, data locality, node health, noisy neighbors, and whether "
                         + "available executors were spread evenly across hosts.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation sqlManyExchangesRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-sql-many-exchanges",
+                bottleneck.severity(),
+                "Investigate SQL plan exchanges",
+                "SQL execution %s has many Exchange operators in its physical plan. "
+                        .formatted(bottleneck.evidence().get("sqlExecutionId"))
+                        + "Exchange operators usually indicate shuffle boundaries. Review joins, aggregations, "
+                        + "sorts, repartition calls, and whether filters or projections can reduce data before "
+                        + "wide operations.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

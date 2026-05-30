@@ -10,6 +10,7 @@ import com.sparkdoctor.analysis.RetryWasteDetector;
 import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
+import com.sparkdoctor.analysis.SqlPlanExchangeDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.analysis.TinyTaskDetector;
 import com.sparkdoctor.analysis.WorkerImbalanceDetector;
@@ -21,6 +22,7 @@ import com.sparkdoctor.model.FailedStage;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
 import com.sparkdoctor.model.SqlExecution;
+import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -57,6 +59,7 @@ public final class SparkEventLogParser {
     private final TinyTaskDetector tinyTaskDetector;
     private final RetryWasteDetector retryWasteDetector;
     private final WorkerImbalanceDetector workerImbalanceDetector;
+    private final SqlPlanExchangeDetector sqlPlanExchangeDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
@@ -73,6 +76,7 @@ public final class SparkEventLogParser {
                 new TinyTaskDetector(),
                 new RetryWasteDetector(),
                 new WorkerImbalanceDetector(),
+                new SqlPlanExchangeDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
     }
@@ -89,6 +93,7 @@ public final class SparkEventLogParser {
             TinyTaskDetector tinyTaskDetector,
             RetryWasteDetector retryWasteDetector,
             WorkerImbalanceDetector workerImbalanceDetector,
+            SqlPlanExchangeDetector sqlPlanExchangeDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
@@ -102,6 +107,7 @@ public final class SparkEventLogParser {
         this.tinyTaskDetector = tinyTaskDetector;
         this.retryWasteDetector = retryWasteDetector;
         this.workerImbalanceDetector = workerImbalanceDetector;
+        this.sqlPlanExchangeDetector = sqlPlanExchangeDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
@@ -287,6 +293,8 @@ public final class SparkEventLogParser {
         List<StageAnalysis> stageAnalyses = stages.values().stream()
                 .map(StageAccumulator::toStageAnalysis)
                 .toList();
+        List<SqlExecution> sqlExecutionAnalyses =
+                sqlExecutions.values().stream().map(SqlExecutionAccumulator::toSqlExecution).toList();
         List<Bottleneck> bottlenecks = new ArrayList<>();
         bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
@@ -297,6 +305,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
         bottlenecks.addAll(retryWasteDetector.detect(stageAnalyses));
         bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));
+        bottlenecks.addAll(sqlPlanExchangeDetector.detect(sqlExecutionAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
@@ -313,7 +322,7 @@ public final class SparkEventLogParser {
                         taskKeys.size(),
                         bottlenecks.size()),
                 stageAnalyses,
-                sqlExecutions.values().stream().map(SqlExecutionAccumulator::toSqlExecution).toList(),
+                sqlExecutionAnalyses,
                 failedJobDetails,
                 failedStageDetails,
                 bottlenecks,
@@ -575,6 +584,36 @@ public final class SparkEventLogParser {
         return value == null ? 0L : value;
     }
 
+    private List<SqlPlanOperatorSummary> operatorSummaries(JsonNode sparkPlanInfo) {
+        if (sparkPlanInfo == null || sparkPlanInfo.isNull()) {
+            return List.of();
+        }
+
+        Map<String, Integer> operatorCounts = new LinkedHashMap<>();
+        recordOperatorCounts(sparkPlanInfo, operatorCounts);
+        return operatorCounts.entrySet().stream()
+                .map(entry -> new SqlPlanOperatorSummary(entry.getKey(), entry.getValue()))
+                .sorted((left, right) -> {
+                    int countComparison = Integer.compare(right.count(), left.count());
+                    return countComparison == 0 ? left.name().compareTo(right.name()) : countComparison;
+                })
+                .toList();
+    }
+
+    private void recordOperatorCounts(JsonNode sparkPlanInfo, Map<String, Integer> operatorCounts) {
+        String nodeName = textOrNull(sparkPlanInfo, "nodeName");
+        if (nodeName != null && !nodeName.isBlank()) {
+            operatorCounts.merge(nodeName, 1, Integer::sum);
+        }
+
+        JsonNode children = sparkPlanInfo.get("children");
+        if (children != null && children.isArray()) {
+            for (JsonNode child : children) {
+                recordOperatorCounts(child, operatorCounts);
+            }
+        }
+    }
+
     private record TaskSpillMetrics(long memoryBytesSpilled, long diskBytesSpilled) {}
 
     private record TaskAttemptKey(int stageId, int stageAttemptId, long taskIndex) {}
@@ -677,6 +716,7 @@ public final class SparkEventLogParser {
                     physicalPlanDescription,
                     latestPhysicalPlanDescription,
                     errorMessage,
+                    operatorSummaries(latestSparkPlanInfo == null ? sparkPlanInfo : latestSparkPlanInfo),
                     sparkPlanInfo,
                     latestSparkPlanInfo,
                     sqlMetricValues);

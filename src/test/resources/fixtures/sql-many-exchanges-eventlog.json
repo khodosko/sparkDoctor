@@ -1,0 +1,4 @@
+{"Event":"SparkListenerApplicationStart","App Name":"sql_many_exchanges_customer_etl","App ID":"app-sql-many-exchanges-0001","Timestamp":1778846400000}
+{"Event":"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart","executionId":9,"rootExecutionId":9,"description":"wide sql collect","details":"Dataset.collect","physicalPlanDescription":"Initial Plan","sparkPlanInfo":{"nodeName":"AdaptiveSparkPlan","children":[{"nodeName":"Exchange","children":[{"nodeName":"HashAggregate","children":[{"nodeName":"Exchange","children":[{"nodeName":"SortMergeJoin","children":[{"nodeName":"Exchange","children":[{"nodeName":"Project","children":[{"nodeName":"Exchange","children":[{"nodeName":"Range","children":[]}]}]}]}]}]}]}]}]},"time":1778846401000}
+{"Event":"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd","executionId":9,"time":1778846402000,"errorMessage":""}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846403000}

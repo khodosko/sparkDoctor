@@ -190,6 +190,8 @@ final class AnalyzeCommandTest {
         assertEquals(960L, json.path("sqlExecutions").get(0).path("durationMillis").asLong());
         assertTrue(json.path("sqlExecutions").get(0).path("physicalPlanDescription").asText().contains("AdaptiveSparkPlan"));
         assertTrue(json.path("sqlExecutions").get(0).path("latestPhysicalPlanDescription").asText().contains("Final Plan"));
+        assertTrue(json.path("sqlExecutions").get(0).path("operatorSummaries").size() > 0);
+        assertTrue(json.path("sqlExecutions").get(0).path("operatorSummaries").toString().contains("Exchange"));
         assertEquals(0, json.path("failedJobs").size());
         assertEquals(0, json.path("failedStages").size());
         assertEquals(0, json.path("bottlenecks").size());
@@ -198,6 +200,8 @@ final class AnalyzeCommandTest {
         assertTrue(sqlExecutionsMarkdown.contains("# SparkDoctor SQL Executions"));
         assertTrue(sqlExecutionsMarkdown.contains("## SQL Execution 0"));
         assertTrue(sqlExecutionsMarkdown.contains("- DOT graph: `sql-execution-0.dot`"));
+        assertTrue(sqlExecutionsMarkdown.contains("### Operator Summary"));
+        assertTrue(sqlExecutionsMarkdown.contains("- Exchange: 2"));
         assertTrue(sqlExecutionsMarkdown.contains("### Latest Physical Plan"));
         assertTrue(sqlExecutionsMarkdown.contains("AdaptiveSparkPlan"));
         String sqlPlanDot = Files.readString(outputDirectory.resolve("sql-execution-0.dot"));
@@ -643,6 +647,49 @@ final class AnalyzeCommandTest {
         assertTrue(recommendationsMarkdown.contains("- Related bottleneck: executor_imbalance"));
         assertTrue(recommendationsMarkdown.contains("### Investigate host imbalance"));
         assertTrue(recommendationsMarkdown.contains("- Related bottleneck: host_imbalance"));
+    }
+
+    @Test
+    void analyzeWritesSqlManyExchangesBottleneckForSqlManyExchangesFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("sql-many-exchanges-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/sql-many-exchanges-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: sql_many_exchanges_customer_etl"));
+        assertTrue(output.toString().contains("SQL executions: 1"));
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains(
+                "- [medium] sql_many_exchanges (application): SQL execution 9 has many exchange operators."));
+        assertTrue(output.toString()
+                .contains("SQL Executions Markdown: " + outputDirectory.resolve("sql-executions.md")));
+
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals(1, json.path("sqlExecutions").size());
+        assertEquals(9L, json.path("sqlExecutions").get(0).path("id").asLong());
+        assertTrue(json.path("sqlExecutions").get(0).path("operatorSummaries").toString().contains("Exchange"));
+        assertEquals("sql_many_exchanges", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals(-1, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(9L, json.path("bottlenecks").get(0).path("evidence").path("sqlExecutionId").asLong());
+        assertEquals(4, json.path("bottlenecks").get(0).path("evidence").path("exchangeCount").asInt());
+        assertEquals(
+                "investigate-sql-many-exchanges",
+                json.path("recommendations").get(0).path("id").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate SQL plan exchanges"));
+        assertTrue(recommendationsMarkdown.contains("- Scope: application"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: sql_many_exchanges"));
+        String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));
+        assertTrue(sqlExecutionsMarkdown.contains("### Operator Summary"));
+        assertTrue(sqlExecutionsMarkdown.contains("- Exchange: 4"));
     }
 
     @Test

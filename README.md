@@ -16,7 +16,7 @@ It currently generates:
 
 - `analysis.json`: machine-readable analysis output
 - `recommendations.md`: human-readable recommendation summary
-- `sql-executions.md`: human-readable SQL execution plan output when SQL events are present
+- `sql-executions.md`: human-readable SQL execution plan output and operator summaries when SQL events are present
 - `sql-execution-<id>.dot`: Graphviz SQL plan graph files with operator names, compact metric labels, and metric values when Spark exposes them
 - terminal summary output
 
@@ -55,7 +55,7 @@ Current summary and stage metrics include:
 - completed and failed stage counts
 - failed job details
 - failed stage details and failure reasons
-- SQL execution descriptions, timing, and physical plan text
+- SQL execution descriptions, timing, physical plan text, and operator counts
 - min, max, and average task duration
 - median, p95, and p99 task duration
 - per-task duration distribution
@@ -286,6 +286,22 @@ workerDurationShare = 0.8
 severity = medium
 ```
 
+### SQL Plans With Many Exchanges
+
+Reports `sql_many_exchanges` when a Spark SQL physical plan contains many `Exchange` operators.
+
+Reports when:
+
+- a SQL execution has at least 4 `Exchange` operators in its structured physical plan
+
+Example:
+
+```text
+sqlExecutionId = 9
+exchangeCount = 4
+severity = medium
+```
+
 ### Failed Jobs And Stages
 
 Reports `failed_job` or `failed_stage` when Spark listener completion events show a failed job or stage.
@@ -460,14 +476,14 @@ Start with the terminal summary:
 
 Then open `recommendations.md` for a readable explanation.
 
-Open `sql-executions.md` when SQL executions are present and you want the full physical plan text without JSON escaping.
+Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping.
 
 Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present. DOT labels include Spark SQL operator names, simple plan strings, and compact metric labels. Metric values are included when Spark exposes matching SQL accumulator values in the event log.
 
 Use `analysis.json` when you want the raw evidence:
 
 - look at `stages` for task duration, shuffle, and spill metrics
-- look at `sqlExecutions` for SQL descriptions, timings, and plan text
+- look at `sqlExecutions` for SQL descriptions, timings, operator summaries, and plan text
 - look at `bottlenecks` for detected issues and evidence thresholds
 - look at `recommendations` for suggested next actions
 
@@ -478,8 +494,7 @@ SparkDoctor is not a complete Spark UI replacement yet.
 Current limitations:
 
 - Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
-- SQL execution parsing is basic; DOT graph export is available when `sparkPlanInfo` exists, but SQL-specific bottleneck rules are not implemented yet.
-- Executor imbalance detection is not implemented yet.
+- SQL diagnostics are still early; SparkDoctor currently summarizes plan operators and detects plans with many exchanges, but does not yet explain every SQL operator or metric.
 - Detector thresholds are conservative and will change as more real workloads are tested.
 
 ## Feedback And Real Event Logs
@@ -521,6 +536,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/tiny-tasks-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/retry-waste-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/worker-imbalanced-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/sql-many-exchanges-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
 ```

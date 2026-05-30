@@ -53,6 +53,9 @@ final class SparkEventLogParserTest {
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart\","
                         + "\"executionId\":3,\"rootExecutionId\":3,\"description\":\"collect\","
                         + "\"details\":\"Dataset.collectToPython\",\"physicalPlanDescription\":\"Initial Plan\","
+                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\",\"children\":["
+                        + "{\"nodeName\":\"Exchange\",\"children\":["
+                        + "{\"nodeName\":\"Range\",\"children\":[]}]}]},"
                         + "\"time\":1000}",
                 "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7,\"Stage IDs\":[9],"
                         + "\"Properties\":{\"spark.sql.execution.id\":\"3\"}}",
@@ -61,7 +64,11 @@ final class SparkEventLogParserTest {
                         + "{\"ID\":44,\"Name\":\"shuffle bytes written\",\"Value\":\"2048\","
                         + "\"Metadata\":\"sql\"}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate\","
-                        + "\"executionId\":3,\"physicalPlanDescription\":\"Final Plan\"}",
+                        + "\"executionId\":3,\"physicalPlanDescription\":\"Final Plan\","
+                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\",\"children\":["
+                        + "{\"nodeName\":\"Exchange\",\"children\":["
+                        + "{\"nodeName\":\"Project\",\"children\":["
+                        + "{\"nodeName\":\"Range\",\"children\":[]}]}]}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates\","
                         + "\"executionId\":3,\"accumUpdates\":[[55,4]]}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd\","
@@ -78,6 +85,10 @@ final class SparkEventLogParserTest {
         assertEquals("Initial Plan", parsedEventLog.sqlExecutions().get(0).physicalPlanDescription());
         assertEquals("Final Plan", parsedEventLog.sqlExecutions().get(0).latestPhysicalPlanDescription());
         assertEquals("", parsedEventLog.sqlExecutions().get(0).errorMessage());
+        assertEquals("AdaptiveSparkPlan", parsedEventLog.sqlExecutions().get(0).operatorSummaries().get(0).name());
+        assertEquals(1, parsedEventLog.sqlExecutions().get(0).operatorSummaries().get(0).count());
+        assertTrue(parsedEventLog.sqlExecutions().get(0).operatorSummaries().stream()
+                .anyMatch(operator -> "Exchange".equals(operator.name()) && operator.count() == 1));
         assertEquals("2048", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(44L));
         assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(55L));
     }
@@ -685,6 +696,10 @@ final class SparkEventLogParserTest {
         assertEquals(
                 "AdaptiveSparkPlan",
                 parsedEventLog.sqlExecutions().get(0).latestSparkPlanInfo().path("nodeName").asText());
+        assertTrue(parsedEventLog.sqlExecutions().get(0).operatorSummaries().stream()
+                .anyMatch(operator -> "Exchange".equals(operator.name()) && operator.count() == 2));
+        assertTrue(parsedEventLog.sqlExecutions().get(0).operatorSummaries().stream()
+                .anyMatch(operator -> "AQEShuffleRead".equals(operator.name()) && operator.count() == 1));
         assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(136L));
         assertEquals("626", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(204L));
         assertEquals(0, parsedEventLog.failedJobs().size());
@@ -695,6 +710,26 @@ final class SparkEventLogParserTest {
         assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> stage.completedTasks() == 8));
         assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> stage.shuffleReadBytes() > 0));
         assertTrue(parsedEventLog.stages().stream().anyMatch(stage -> !stage.taskShuffleReadBytes().isEmpty()));
+    }
+
+    @Test
+    void detectsSqlPlanWithManyExchangeOperatorsFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/sql-many-exchanges-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("sql_many_exchanges_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(1, parsedEventLog.sqlExecutions().size());
+        assertEquals(9L, parsedEventLog.sqlExecutions().get(0).id());
+        assertTrue(parsedEventLog.sqlExecutions().get(0).operatorSummaries().stream()
+                .anyMatch(operator -> "Exchange".equals(operator.name()) && operator.count() == 4));
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("sql_many_exchanges", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals(-1, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(9L, parsedEventLog.bottlenecks().get(0).evidence().get("sqlExecutionId"));
+        assertEquals(4, parsedEventLog.bottlenecks().get(0).evidence().get("exchangeCount"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-sql-many-exchanges", parsedEventLog.recommendations().get(0).id());
     }
 
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {

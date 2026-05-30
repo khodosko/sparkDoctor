@@ -2,6 +2,7 @@ package com.sparkdoctor.output;
 
 import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.SqlExecution;
+import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +44,7 @@ public final class SqlExecutionsMarkdownWriter {
                         .append("`\n");
             }
             markdown.append("\n");
+            appendOperatorSummary(markdown, sqlExecution);
             if (hasText(sqlExecution.details())) {
                 markdown.append("### Details\n\n");
                 markdown.append("```text\n");
@@ -54,6 +56,22 @@ public final class SqlExecutionsMarkdownWriter {
         }
 
         return markdown.toString();
+    }
+
+    private void appendOperatorSummary(StringBuilder markdown, SqlExecution sqlExecution) {
+        if (sqlExecution.operatorSummaries().isEmpty()) {
+            return;
+        }
+
+        markdown.append("### Operator Summary\n\n");
+        for (SqlPlanOperatorSummary operator : sqlExecution.operatorSummaries()) {
+            markdown.append("- ")
+                    .append(operator.name())
+                    .append(": ")
+                    .append(operator.count())
+                    .append("\n");
+        }
+        markdown.append("\n");
     }
 
     private void appendPlan(StringBuilder markdown, String title, String plan) {

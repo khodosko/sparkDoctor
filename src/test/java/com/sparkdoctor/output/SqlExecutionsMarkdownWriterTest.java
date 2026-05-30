@@ -9,6 +9,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.SqlExecution;
+import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -40,8 +41,13 @@ final class SqlExecutionsMarkdownWriterTest {
                         "Initial Plan",
                         "Final Plan",
                         "",
+                        List.of(
+                                new SqlPlanOperatorSummary("Exchange", 2),
+                                new SqlPlanOperatorSummary("HashAggregate", 2),
+                                new SqlPlanOperatorSummary("Sort", 1)),
                         plan,
-                        plan)),
+                        plan,
+                        null)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -60,6 +66,9 @@ final class SqlExecutionsMarkdownWriterTest {
         assertTrue(markdown.contains("- Duration millis: 600"));
         assertTrue(markdown.contains("- Status: success"));
         assertTrue(markdown.contains("- DOT graph: `sql-execution-3.dot`"));
+        assertTrue(markdown.contains("### Operator Summary"));
+        assertTrue(markdown.contains("- Exchange: 2"));
+        assertTrue(markdown.contains("- HashAggregate: 2"));
         assertTrue(markdown.contains("### Details"));
         assertTrue(markdown.contains("Dataset.collectToPython"));
         assertTrue(markdown.contains("### Initial Physical Plan"));

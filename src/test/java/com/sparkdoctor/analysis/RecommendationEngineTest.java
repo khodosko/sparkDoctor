@@ -254,6 +254,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForSqlPlansWithManyExchanges() {
+        Bottleneck bottleneck = new Bottleneck(
+                "sql_many_exchanges",
+                "medium",
+                -1,
+                "SQL execution 3 has many exchange operators.",
+                Map.of("sqlExecutionId", 3L, "exchangeCount", 4));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-sql-many-exchanges", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate SQL plan exchanges", recommendation.title());
+        assertEquals("sql_many_exchanges", recommendation.relatedBottleneckType());
+        assertEquals(-1, recommendation.stageId());
+        assertTrue(recommendation.description().contains("Exchange operators"));
+        assertTrue(recommendation.description().contains("shuffle boundaries"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",
