@@ -1,0 +1,17 @@
+{"Event":"SparkListenerApplicationStart","App Name":"speculation_heavy_customer_etl","App ID":"app-speculation-heavy-0001","Timestamp":1778846400000}
+{"Event":"SparkListenerJobStart","Job ID":1}
+{"Event":"SparkListenerStageSubmitted","Stage Info":{"Stage ID":18,"Stage Name":"speculation heavy transform","Number of Tasks":10}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1800,"Index":0,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1801,"Index":1,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1802,"Index":2,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1803,"Index":3,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1804,"Index":4,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1805,"Index":5,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1806,"Index":6,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1807,"Index":7,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1808,"Index":8,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1809,"Index":9,"Launch Time":1778846400000,"Finish Time":1778846401000,"Successful":true,"Speculative":false},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1810,"Index":0,"Launch Time":1778846401000,"Finish Time":1778846402000,"Successful":true,"Speculative":true},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1811,"Index":1,"Launch Time":1778846401000,"Finish Time":1778846402000,"Successful":true,"Speculative":true},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerTaskEnd","Stage ID":18,"Stage Attempt ID":0,"Task Info":{"Task ID":1812,"Index":2,"Launch Time":1778846401000,"Finish Time":1778846402000,"Successful":true,"Speculative":true},"Task End Reason":{"Reason":"Success"}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846410000}

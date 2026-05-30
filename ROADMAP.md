@@ -17,6 +17,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - detect task-level memory and disk spill skew
 - detect excessive tiny task overhead
 - detect retry waste from failed task attempts
+- detect speculation-heavy workloads
 - detect executor and host imbalance
 - summarize SQL physical plan operators and detect plans with many exchanges
 - generate `analysis.json`
@@ -32,7 +33,6 @@ These are the next open-source priorities.
 ### More Spark Diagnostics
 
 - Add more SQL-specific diagnostics from parsed physical plan nodes and metric values.
-- Detect speculation-heavy workloads.
 - Improve failed job and failed stage evidence.
 
 ### Better Report Output

@@ -210,6 +210,28 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForSpeculationHeavyStages() {
+        Bottleneck bottleneck = new Bottleneck(
+                "speculation_heavy",
+                "medium",
+                18,
+                "Stage 18 has heavy speculative execution.",
+                Map.of("speculativeTaskAttempts", 3));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-speculation-heavy-stage", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate heavy speculative execution", recommendation.title());
+        assertEquals("speculation_heavy", recommendation.relatedBottleneckType());
+        assertEquals(18, recommendation.stageId());
+        assertTrue(recommendation.description().contains("wastes compute"));
+        assertTrue(recommendation.description().contains("too aggressive"));
+    }
+
+    @Test
     void recommendsInvestigationForExecutorImbalance() {
         Bottleneck bottleneck = new Bottleneck(
                 "executor_imbalance",

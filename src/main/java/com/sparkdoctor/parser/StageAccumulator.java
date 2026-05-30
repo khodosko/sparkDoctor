@@ -22,6 +22,9 @@ final class StageAccumulator {
     private int failedTaskAttempts;
     private long failedTaskAttemptDurationMillis;
     private final List<String> failedTaskAttemptReasons = new ArrayList<>();
+    private int speculativeTaskAttempts;
+    private long speculativeTaskAttemptDurationMillis;
+    private int duplicateSuccessfulTaskAttempts;
     private final Map<String, WorkerStats> executorStats = new LinkedHashMap<>();
     private final Map<String, WorkerStats> hostStats = new LinkedHashMap<>();
     private long shuffleReadBytes;
@@ -63,6 +66,17 @@ final class StageAccumulator {
         if (reason != null && !reason.isBlank() && !failedTaskAttemptReasons.contains(reason)) {
             failedTaskAttemptReasons.add(reason);
         }
+    }
+
+    void addSpeculativeTaskAttempt(Long durationMillis) {
+        speculativeTaskAttempts++;
+        if (durationMillis != null) {
+            speculativeTaskAttemptDurationMillis += durationMillis;
+        }
+    }
+
+    void addDuplicateSuccessfulTaskAttempt() {
+        duplicateSuccessfulTaskAttempts++;
     }
 
     void addWorkerTask(Long durationMillis, String executorId, String host) {
@@ -127,6 +141,9 @@ final class StageAccumulator {
                 failedTaskAttempts,
                 failedTaskAttemptDurationMillis,
                 failedTaskAttemptReasons,
+                speculativeTaskAttempts,
+                speculativeTaskAttemptDurationMillis,
+                duplicateSuccessfulTaskAttempts,
                 workerSummaries(executorStats),
                 workerSummaries(hostStats),
                 shuffleReadBytes,

@@ -60,6 +60,7 @@ Current summary and stage metrics include:
 - median, p95, and p99 task duration
 - per-task duration distribution
 - failed task attempt count, duration, and reason summaries
+- successful speculative task attempt count, duration, and duplicate successful attempt count
 - executor and host task distribution summaries
 - total shuffle read bytes
 - max task shuffle read bytes
@@ -263,6 +264,29 @@ Example:
 failedTaskAttempts = 3
 failedTaskAttemptDurationMillis = 30000
 failedTaskAttemptReasons = [ExceptionFailure, ExecutorLostFailure]
+severity = medium
+```
+
+### Heavy Speculative Execution
+
+Reports `speculation_heavy` when a stage has many successful speculative task attempts relative to the final completed task count.
+
+Reports when:
+
+- stage has at least 10 completed tasks
+- successful speculative task attempts are at least 3
+- successful speculative task attempts are at least 20% of completed tasks
+
+Severity is `high` when:
+
+- successful speculative task attempts are at least 50% of completed tasks
+
+Example:
+
+```text
+completedTasks = 10
+speculativeTaskAttempts = 3
+speculativeAttemptShare = 0.3
 severity = medium
 ```
 
@@ -535,6 +559,7 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/memory-spill-skew-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/tiny-tasks-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/retry-waste-eventlog.json --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/speculation-heavy-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/worker-imbalanced-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/sql-many-exchanges-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/failed-eventlog.json --out ./sparkdoctor-report

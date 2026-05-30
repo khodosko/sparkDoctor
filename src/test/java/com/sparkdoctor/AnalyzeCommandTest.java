@@ -693,6 +693,45 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesSpeculationHeavyBottleneckForSpeculationHeavyFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("speculation-heavy-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/speculation-heavy-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: speculation_heavy_customer_etl"));
+        assertTrue(output.toString().contains("Tasks: 10"));
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains(
+                "- [medium] speculation_heavy (stage 18): Stage 18 has heavy speculative execution."));
+
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals("speculation_heavy_customer_etl", json.path("application").path("name").asText());
+        assertEquals(10, json.path("summary").path("tasks").asInt());
+        assertEquals(1, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(3, json.path("stages").get(0).path("speculativeTaskAttempts").asInt());
+        assertEquals(3000L, json.path("stages").get(0).path("speculativeTaskAttemptDurationMillis").asLong());
+        assertEquals(3, json.path("stages").get(0).path("duplicateSuccessfulTaskAttempts").asInt());
+        assertEquals("speculation_heavy", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals(18, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(0.3, json.path("bottlenecks").get(0).path("evidence").path("speculativeAttemptShare").asDouble());
+        assertEquals(
+                "investigate-speculation-heavy-stage",
+                json.path("recommendations").get(0).path("id").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate heavy speculative execution"));
+        assertTrue(recommendationsMarkdown.contains("- Related bottleneck: speculation_heavy"));
+    }
+
+    @Test
     void analyzeWritesFailedJobAndStageBottlenecksForFailedFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("failed-report");
         StringWriter output = new StringWriter();

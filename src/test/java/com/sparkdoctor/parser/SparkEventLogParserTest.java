@@ -732,6 +732,28 @@ final class SparkEventLogParserTest {
         assertEquals("investigate-sql-many-exchanges", parsedEventLog.recommendations().get(0).id());
     }
 
+    @Test
+    void detectsSpeculationHeavyStageFromFixtureFile() throws Exception {
+        Path fixture = Path.of("src/test/resources/fixtures/speculation-heavy-eventlog.json");
+
+        ParsedEventLog parsedEventLog = parser.parse(fixture);
+
+        assertEquals("speculation_heavy_customer_etl", parsedEventLog.applicationSummary().appName());
+        assertEquals(10, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.analysisSummary().issuesDetected());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(10, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(3, parsedEventLog.stages().get(0).speculativeTaskAttempts());
+        assertEquals(3000L, parsedEventLog.stages().get(0).speculativeTaskAttemptDurationMillis());
+        assertEquals(3, parsedEventLog.stages().get(0).duplicateSuccessfulTaskAttempts());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("speculation_heavy", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals(18, parsedEventLog.bottlenecks().get(0).stageId());
+        assertEquals(0.3, parsedEventLog.bottlenecks().get(0).evidence().get("speculativeAttemptShare"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-speculation-heavy-stage", parsedEventLog.recommendations().get(0).id());
+    }
+
     private String taskEnd(int stageId, long taskId, long launchTimeMillis, long finishTimeMillis) {
         return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,"
                 + "\"Task Info\":{\"Task ID\":%d,\"Launch Time\":%d,\"Finish Time\":%d}}"

@@ -27,6 +27,8 @@ public final class RecommendationEngine {
                 recommendations.add(tinyTaskRecommendation(bottleneck));
             } else if ("retry_waste".equals(bottleneck.type())) {
                 recommendations.add(retryWasteRecommendation(bottleneck));
+            } else if ("speculation_heavy".equals(bottleneck.type())) {
+                recommendations.add(speculationHeavyRecommendation(bottleneck));
             } else if ("executor_imbalance".equals(bottleneck.type())) {
                 recommendations.add(executorImbalanceRecommendation(bottleneck));
             } else if ("host_imbalance".equals(bottleneck.type())) {
@@ -164,6 +166,19 @@ public final class RecommendationEngine {
                         + "Inspect failed task reasons and executor logs for executor loss, out-of-memory errors, "
                         + "shuffle fetch failures, bad input records, preemption, or unstable worker nodes. "
                         + "Fix retry instability before normal performance tuning.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation speculationHeavyRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-speculation-heavy-stage",
+                bottleneck.severity(),
+                "Investigate heavy speculative execution",
+                "Stage %d had many successful speculative task attempts. ".formatted(bottleneck.stageId())
+                        + "Speculation can hide slow tasks but also wastes compute when it fires often. Check for data "
+                        + "skew, slow or unhealthy executors, noisy nodes, poor locality, and whether speculation "
+                        + "settings are too aggressive for this workload.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

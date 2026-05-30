@@ -122,6 +122,9 @@ final class AnalysisJsonWriterTest {
         assertEquals(0, json.path("stages").get(0).path("failedTaskAttempts").asInt());
         assertEquals(0L, json.path("stages").get(0).path("failedTaskAttemptDurationMillis").asLong());
         assertEquals(0, json.path("stages").get(0).path("failedTaskAttemptReasons").size());
+        assertEquals(0, json.path("stages").get(0).path("speculativeTaskAttempts").asInt());
+        assertEquals(0L, json.path("stages").get(0).path("speculativeTaskAttemptDurationMillis").asLong());
+        assertEquals(0, json.path("stages").get(0).path("duplicateSuccessfulTaskAttempts").asInt());
         assertEquals(0, json.path("stages").get(0).path("executorSummaries").size());
         assertEquals(0, json.path("stages").get(0).path("hostSummaries").size());
         assertEquals(7000L, json.path("stages").get(0).path("shuffleReadBytes").asLong());

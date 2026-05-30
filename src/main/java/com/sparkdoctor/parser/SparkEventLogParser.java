@@ -11,6 +11,7 @@ import com.sparkdoctor.analysis.ShufflePartitionSkewDetector;
 import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
 import com.sparkdoctor.analysis.SqlPlanExchangeDetector;
+import com.sparkdoctor.analysis.SpeculationDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.analysis.TinyTaskDetector;
 import com.sparkdoctor.analysis.WorkerImbalanceDetector;
@@ -58,6 +59,7 @@ public final class SparkEventLogParser {
     private final SpillSkewDetector spillSkewDetector;
     private final TinyTaskDetector tinyTaskDetector;
     private final RetryWasteDetector retryWasteDetector;
+    private final SpeculationDetector speculationDetector;
     private final WorkerImbalanceDetector workerImbalanceDetector;
     private final SqlPlanExchangeDetector sqlPlanExchangeDetector;
     private final FailureDetector failureDetector;
@@ -75,6 +77,7 @@ public final class SparkEventLogParser {
                 new SpillSkewDetector(),
                 new TinyTaskDetector(),
                 new RetryWasteDetector(),
+                new SpeculationDetector(),
                 new WorkerImbalanceDetector(),
                 new SqlPlanExchangeDetector(),
                 new FailureDetector(),
@@ -92,6 +95,7 @@ public final class SparkEventLogParser {
             SpillSkewDetector spillSkewDetector,
             TinyTaskDetector tinyTaskDetector,
             RetryWasteDetector retryWasteDetector,
+            SpeculationDetector speculationDetector,
             WorkerImbalanceDetector workerImbalanceDetector,
             SqlPlanExchangeDetector sqlPlanExchangeDetector,
             FailureDetector failureDetector,
@@ -106,6 +110,7 @@ public final class SparkEventLogParser {
         this.spillSkewDetector = spillSkewDetector;
         this.tinyTaskDetector = tinyTaskDetector;
         this.retryWasteDetector = retryWasteDetector;
+        this.speculationDetector = speculationDetector;
         this.workerImbalanceDetector = workerImbalanceDetector;
         this.sqlPlanExchangeDetector = sqlPlanExchangeDetector;
         this.failureDetector = failureDetector;
@@ -241,8 +246,16 @@ public final class SparkEventLogParser {
 
                 Long shuffleReadBytes = shuffleReadBytes(event);
                 TaskSpillMetrics spillMetrics = spillMetrics(event);
+                StageAccumulator stage = stages.computeIfAbsent(stageId, StageAccumulator::new);
+                if (isSpeculativeTaskAttempt(event)) {
+                    stage.addSpeculativeTaskAttempt(taskDurationMillis);
+                }
+                TaskAttemptKey taskAttemptKey = new TaskAttemptKey(stageId, stageAttemptId == null ? 0 : stageAttemptId, taskIndex);
+                if (successfulTaskAttempts.containsKey(taskAttemptKey)) {
+                    stage.addDuplicateSuccessfulTaskAttempt();
+                }
                 successfulTaskAttempts.put(
-                        new TaskAttemptKey(stageId, stageAttemptId == null ? 0 : stageAttemptId, taskIndex),
+                        taskAttemptKey,
                         new ParsedTaskAttempt(
                                 stageId,
                                 taskDurationMillis,
@@ -304,6 +317,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(spillSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
         bottlenecks.addAll(retryWasteDetector.detect(stageAnalyses));
+        bottlenecks.addAll(speculationDetector.detect(stageAnalyses));
         bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));
         bottlenecks.addAll(sqlPlanExchangeDetector.detect(sqlExecutionAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
@@ -452,6 +466,11 @@ public final class SparkEventLogParser {
         }
 
         return textOrNull(taskInfo, "Host");
+    }
+
+    private boolean isSpeculativeTaskAttempt(JsonNode event) {
+        JsonNode taskInfo = event.get("Task Info");
+        return taskInfo != null && taskInfo.path("Speculative").asBoolean(false);
     }
 
     private Long taskIndex(JsonNode event) {
