@@ -28,6 +28,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - provide a terminal summary for quick inspection
 - show severity summaries in terminal and markdown output
 - print actionable parse-failure guidance and clear stale generated report artifacts before each analysis
+- document how to find Spark event logs from local Spark, Spark History Server, Databricks, EMR, and AWS Glue
 
 ## Near-Term
 
@@ -49,6 +50,7 @@ These are the next open-source priorities.
 - Add fixtures from common environments when sanitized examples are available.
 - Improve support for rolling event log directories.
 - Parse more Spark listener events that are useful for diagnostics.
+- Add more deployment-specific event-log export docs as users report their environments.
 
 ### Easier Installation
 
