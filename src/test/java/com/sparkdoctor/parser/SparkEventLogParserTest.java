@@ -658,6 +658,11 @@ final class SparkEventLogParserTest {
         assertEquals(
                 "Fetch failed: executor lost during shuffle read",
                 parsedEventLog.failedStages().get(0).failureReason());
+        assertEquals(2, parsedEventLog.failedStages().get(0).failedTaskAttempts());
+        assertEquals(4500L, parsedEventLog.failedStages().get(0).failedTaskAttemptDurationMillis());
+        assertEquals(
+                List.of("FetchFailed", "ExecutorLostFailure"),
+                parsedEventLog.failedStages().get(0).failedTaskAttemptReasons());
         assertEquals(2, parsedEventLog.bottlenecks().size());
         assertEquals("failed_job", parsedEventLog.bottlenecks().get(0).type());
         assertEquals("failed_stage", parsedEventLog.bottlenecks().get(1).type());

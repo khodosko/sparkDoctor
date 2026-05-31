@@ -215,12 +215,16 @@ public final class SparkEventLogParser {
                     } else {
                         completedStageIds.remove(stageId);
                         failedStageIds.add(stageId);
+                        StageAccumulator stage = stages.computeIfAbsent(stageId, StageAccumulator::new);
                         failedStages.put(
                                 stageId,
                                 new FailedStage(
                                         stageId,
                                         textOrNull(stageInfo, "Stage Name"),
-                                        textOrNull(stageInfo, "Failure Reason")));
+                                        textOrNull(stageInfo, "Failure Reason"),
+                                        stage.failedTaskAttempts(),
+                                        stage.failedTaskAttemptDurationMillis(),
+                                        stage.failedTaskAttemptReasons()));
                     }
                 }
             } else if (TASK_END.equals(eventType)) {

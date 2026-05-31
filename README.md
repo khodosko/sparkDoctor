@@ -332,12 +332,16 @@ Reports `failed_job` or `failed_stage` when Spark listener completion events sho
 
 Severity is `high` because a failed job or stage usually means the Spark application did not finish the intended work or paid retry/recovery cost.
 
+For failed stages, SparkDoctor also includes failed task attempt count, failed attempt duration, and failed task reasons when task end events are present before the stage failure event.
+
 Example:
 
 ```text
 jobsFailed = 1
 stagesFailed = 1
 failureReason = Fetch failed
+failedTaskAttempts = 2
+failedTaskAttemptReasons = [FetchFailed, ExecutorLostFailure]
 ```
 
 ## Requirements

@@ -241,9 +241,29 @@ public final class RecommendationEngine {
                 bottleneck.severity(),
                 "Investigate failed Spark stage",
                 "Stage %d failed. ".formatted(bottleneck.stageId())
+                        + failedStageEvidenceSentence(bottleneck)
                         + "Start with the stage failure reason and failed task logs, then check for shuffle fetch "
                         + "failures, executor loss, out-of-memory errors, bad input records, or repeated task failures.",
                 bottleneck.type(),
                 bottleneck.stageId());
+    }
+
+    private String failedStageEvidenceSentence(Bottleneck bottleneck) {
+        StringBuilder evidence = new StringBuilder();
+        Object failureReason = bottleneck.evidence().get("failureReason");
+        if (failureReason != null && !"unknown".equals(failureReason)) {
+            evidence.append("Failure reason: ").append(failureReason).append(". ");
+        }
+
+        Object failedTaskAttempts = bottleneck.evidence().get("failedTaskAttempts");
+        if (failedTaskAttempts instanceof Integer attempts && attempts > 0) {
+            evidence.append("The stage recorded ")
+                    .append(attempts)
+                    .append(" failed task attempt")
+                    .append(attempts == 1 ? "" : "s")
+                    .append(". ");
+        }
+
+        return evidence.toString();
     }
 }

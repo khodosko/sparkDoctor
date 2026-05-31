@@ -32,7 +32,7 @@ final class FailureDetectorTest {
     void detectsFailedStagesAsHighSeverityBottlenecks() {
         List<Bottleneck> bottlenecks = detector.detect(
                 List.of(),
-                List.of(new FailedStage(8, "shuffle", "Fetch failed")));
+                List.of(new FailedStage(8, "shuffle", "Fetch failed", 2, 4500L, List.of("FetchFailed"))));
 
         assertEquals(1, bottlenecks.size());
         Bottleneck bottleneck = bottlenecks.get(0);
@@ -43,6 +43,9 @@ final class FailureDetectorTest {
         assertEquals(8, bottleneck.evidence().get("stageId"));
         assertEquals("shuffle", bottleneck.evidence().get("stageName"));
         assertEquals("Fetch failed", bottleneck.evidence().get("failureReason"));
+        assertEquals(2, bottleneck.evidence().get("failedTaskAttempts"));
+        assertEquals(4500L, bottleneck.evidence().get("failedTaskAttemptDurationMillis"));
+        assertEquals(List.of("FetchFailed"), bottleneck.evidence().get("failedTaskAttemptReasons"));
     }
 
     @Test

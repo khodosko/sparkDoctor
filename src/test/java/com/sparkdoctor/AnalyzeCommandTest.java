@@ -765,8 +765,16 @@ final class AnalyzeCommandTest {
         assertEquals(
                 "Fetch failed: executor lost during shuffle read",
                 json.path("failedStages").get(0).path("failureReason").asText());
+        assertEquals(2, json.path("failedStages").get(0).path("failedTaskAttempts").asInt());
+        assertEquals(4500L, json.path("failedStages").get(0).path("failedTaskAttemptDurationMillis").asLong());
+        assertEquals(2, json.path("failedStages").get(0).path("failedTaskAttemptReasons").size());
+        assertEquals("FetchFailed", json.path("failedStages").get(0).path("failedTaskAttemptReasons").get(0).asText());
         assertEquals("failed_job", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("failed_stage", json.path("bottlenecks").get(1).path("type").asText());
+        assertEquals(2, json.path("bottlenecks").get(1).path("evidence").path("failedTaskAttempts").asInt());
+        assertEquals(
+                "ExecutorLostFailure",
+                json.path("bottlenecks").get(1).path("evidence").path("failedTaskAttemptReasons").get(1).asText());
         assertEquals("investigate-failed-job", json.path("recommendations").get(0).path("id").asText());
         assertEquals("investigate-failed-stage", json.path("recommendations").get(1).path("id").asText());
 
@@ -775,6 +783,8 @@ final class AnalyzeCommandTest {
         assertTrue(recommendationsMarkdown.contains("- Scope: application"));
         assertTrue(recommendationsMarkdown.contains("### Investigate failed Spark stage"));
         assertTrue(recommendationsMarkdown.contains("- Stage ID: 13"));
+        assertTrue(recommendationsMarkdown.contains("Failure reason: Fetch failed: executor lost during shuffle read."));
+        assertTrue(recommendationsMarkdown.contains("The stage recorded 2 failed task attempts."));
     }
 
     @Test

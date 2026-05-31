@@ -166,6 +166,18 @@ final class StageAccumulator {
                 sortedTaskDiskBytesSpilled);
     }
 
+    int failedTaskAttempts() {
+        return failedTaskAttempts;
+    }
+
+    long failedTaskAttemptDurationMillis() {
+        return failedTaskAttemptDurationMillis;
+    }
+
+    List<String> failedTaskAttemptReasons() {
+        return List.copyOf(failedTaskAttemptReasons);
+    }
+
     private Long median(List<Long> sortedValues) {
         if (sortedValues.isEmpty()) {
             return null;

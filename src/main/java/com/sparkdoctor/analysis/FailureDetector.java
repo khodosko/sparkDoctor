@@ -31,7 +31,10 @@ public final class FailureDetector {
                     Map.of(
                             "stageId", failedStage.id(),
                             "stageName", display(failedStage.name()),
-                            "failureReason", display(failedStage.failureReason()))));
+                            "failureReason", display(failedStage.failureReason()),
+                            "failedTaskAttempts", failedStage.failedTaskAttempts(),
+                            "failedTaskAttemptDurationMillis", failedStage.failedTaskAttemptDurationMillis(),
+                            "failedTaskAttemptReasons", failedStage.failedTaskAttemptReasons())));
         }
 
         return bottlenecks;

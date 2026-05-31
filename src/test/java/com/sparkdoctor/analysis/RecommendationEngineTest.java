@@ -326,7 +326,7 @@ final class RecommendationEngineTest {
                 "high",
                 8,
                 "Stage 8 failed.",
-                Map.of("failureReason", "Fetch failed"));
+                Map.of("failureReason", "Fetch failed", "failedTaskAttempts", 2));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -338,6 +338,8 @@ final class RecommendationEngineTest {
         assertEquals("failed_stage", recommendation.relatedBottleneckType());
         assertEquals(8, recommendation.stageId());
         assertTrue(recommendation.description().contains("stage failure reason"));
+        assertTrue(recommendation.description().contains("Failure reason: Fetch failed."));
+        assertTrue(recommendation.description().contains("2 failed task attempts"));
         assertTrue(recommendation.description().contains("out-of-memory"));
     }
 
