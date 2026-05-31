@@ -22,7 +22,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - include failed task attempt evidence for failed stages
 - summarize SQL physical plan operators and detect plans with many exchanges
 - generate `analysis.json`
-- generate `recommendations.md` with stage hotspots
+- generate `recommendations.md` with stage hotspots and bottleneck evidence
 - generate `sql-executions.md` when SQL execution plans are present
 - generate Graphviz `.dot` files for structured SQL execution plans
 - provide a terminal summary for quick inspection

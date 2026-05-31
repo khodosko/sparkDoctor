@@ -60,10 +60,37 @@ public final class RecommendationsMarkdownWriter {
             markdown.append("- Related bottleneck: ")
                     .append(recommendation.relatedBottleneckType())
                     .append("\n\n");
+            appendEvidence(markdown, recommendation, report);
             markdown.append(recommendation.description()).append("\n\n");
         }
 
         return markdown.toString();
+    }
+
+    private void appendEvidence(StringBuilder markdown, Recommendation recommendation, AnalysisReport report) {
+        for (Bottleneck bottleneck : report.bottlenecks()) {
+            if (!matchesRecommendation(bottleneck, recommendation)
+                    || bottleneck.evidence() == null
+                    || bottleneck.evidence().isEmpty()) {
+                continue;
+            }
+
+            markdown.append("Evidence:\n\n");
+            bottleneck.evidence().entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(entry -> markdown.append("- ")
+                            .append(entry.getKey())
+                            .append(": ")
+                            .append(displayEvidence(entry.getValue()))
+                            .append("\n"));
+            markdown.append("\n");
+            return;
+        }
+    }
+
+    private boolean matchesRecommendation(Bottleneck bottleneck, Recommendation recommendation) {
+        return bottleneck.stageId() == recommendation.stageId()
+                && bottleneck.type().equals(recommendation.relatedBottleneckType());
     }
 
     private void appendStageHotspots(StringBuilder markdown, AnalysisReport report) {
@@ -125,6 +152,10 @@ public final class RecommendationsMarkdownWriter {
 
     private String display(Long value) {
         return value == null ? "unknown" : Long.toString(value);
+    }
+
+    private String displayEvidence(Object value) {
+        return value == null ? "null" : value.toString();
     }
 
     private record StageHotspot(StageAnalysis stage, long issueCount, boolean failed) {

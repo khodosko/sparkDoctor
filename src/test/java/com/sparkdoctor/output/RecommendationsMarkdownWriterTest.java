@@ -63,6 +63,8 @@ final class RecommendationsMarkdownWriterTest {
         assertTrue(markdown.contains("- Severity: medium"));
         assertTrue(markdown.contains("- Stage ID: 4"));
         assertTrue(markdown.contains("- Related bottleneck: spill_pressure"));
+        assertTrue(markdown.contains("Evidence:"));
+        assertTrue(markdown.contains("- diskBytesSpilled: 314572800"));
         assertTrue(markdown.contains("Stage 4 spilled a significant amount of data"));
     }
 
@@ -104,6 +106,7 @@ final class RecommendationsMarkdownWriterTest {
         String markdown = Files.readString(recommendationsPath);
         assertTrue(markdown.contains("- Scope: application"));
         assertTrue(markdown.contains("- Related bottleneck: failed_job"));
+        assertTrue(markdown.contains("- jobId: 3"));
     }
 
     @Test
