@@ -7,6 +7,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.AnalysisSummary;
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.Bottleneck;
+import com.sparkdoctor.model.FailedStage;
 import com.sparkdoctor.model.Recommendation;
 import com.sparkdoctor.model.StageAnalysis;
 import java.nio.file.Files;
@@ -53,6 +54,11 @@ final class RecommendationsMarkdownWriterTest {
         assertTrue(markdown.contains("- Jobs completed: 0"));
         assertTrue(markdown.contains("- Stages completed: 0"));
         assertTrue(markdown.contains("- Issues detected: 1"));
+        assertTrue(markdown.contains("## Stage Hotspots"));
+        assertTrue(markdown.contains("- Stage 4 (aggregate): issues=1"));
+        assertTrue(markdown.contains("completedTasks=2"));
+        assertTrue(markdown.contains("avgTaskDurationMillis=2000"));
+        assertTrue(markdown.contains("maxTaskDurationMillis=3000"));
         assertTrue(markdown.contains("### Reduce spill pressure"));
         assertTrue(markdown.contains("- Severity: medium"));
         assertTrue(markdown.contains("- Stage ID: 4"));
@@ -98,5 +104,39 @@ final class RecommendationsMarkdownWriterTest {
         String markdown = Files.readString(recommendationsPath);
         assertTrue(markdown.contains("- Scope: application"));
         assertTrue(markdown.contains("- Related bottleneck: failed_job"));
+    }
+
+    @Test
+    void writesFailedStagesFirstInStageHotspots() throws Exception {
+        AnalysisReport report = AnalysisReport.from(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 0, 1, 2, 0, 1, 10, 1),
+                List.of(
+                        new StageAnalysis(1, "slow stage", 8, 8, 1000L, 9000L, 3000L, 0L, null),
+                        new StageAnalysis(2, "failed stage", 2, 0, null, null, null, 0L, null)),
+                List.of(),
+                List.of(new FailedStage(2, "failed stage", "Fetch failed")),
+                List.of(new Bottleneck(
+                        "failed_stage",
+                        "high",
+                        2,
+                        "Stage 2 failed.",
+                        Map.of("stageId", 2))),
+                List.of(new Recommendation(
+                        "investigate-failed-stage",
+                        "high",
+                        "Investigate failed Spark stage",
+                        "Stage 2 failed.",
+                        "failed_stage",
+                        2)));
+        Path outputDirectory = tempDir.resolve("failed-hotspots-report");
+
+        Path recommendationsPath = writer.write(outputDirectory, report);
+
+        String markdown = Files.readString(recommendationsPath);
+        int failedStageIndex = markdown.indexOf("- Stage 2 (failed stage): issues=1, failed=true");
+        int slowStageIndex = markdown.indexOf("- Stage 1 (slow stage): issues=0");
+        assertTrue(failedStageIndex > 0);
+        assertTrue(slowStageIndex > failedStageIndex);
     }
 }

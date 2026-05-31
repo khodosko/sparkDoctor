@@ -15,7 +15,7 @@ SparkDoctor is early-stage and focused on offline event log analysis.
 It currently generates:
 
 - `analysis.json`: machine-readable analysis output
-- `recommendations.md`: human-readable recommendation summary
+- `recommendations.md`: human-readable stage hotspots and recommendation summary
 - `sql-executions.md`: human-readable SQL execution plan output and operator summaries when SQL events are present
 - `sql-execution-<id>.dot`: Graphviz SQL plan graph files with operator names, compact metric labels, and metric values when Spark exposes them
 - terminal summary output
@@ -502,7 +502,7 @@ Start with the terminal summary:
 - `Recommendations` tells you how many actions SparkDoctor generated.
 - `Top bottlenecks` shows the first few issues with severity and stage ID.
 
-Then open `recommendations.md` for a readable explanation.
+Then open `recommendations.md` for stage hotspots and a readable explanation.
 
 Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping.
 

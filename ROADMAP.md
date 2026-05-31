@@ -22,7 +22,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - include failed task attempt evidence for failed stages
 - summarize SQL physical plan operators and detect plans with many exchanges
 - generate `analysis.json`
-- generate `recommendations.md`
+- generate `recommendations.md` with stage hotspots
 - generate `sql-executions.md` when SQL execution plans are present
 - generate Graphviz `.dot` files for structured SQL execution plans
 - provide a terminal summary for quick inspection
@@ -38,7 +38,6 @@ These are the next open-source priorities.
 ### Better Report Output
 
 - Add a local HTML report.
-- Rank stages by duration, shuffle read, spill, and failure status.
 - Add evidence tables for bottlenecks.
 - Add a clearer severity summary.
 - Make recommendation wording more specific to the observed evidence.
