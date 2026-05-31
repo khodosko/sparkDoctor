@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Stream;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -70,12 +71,24 @@ public final class AnalyzeCommand implements Callable<Integer> {
             return 2;
         }
 
+        try {
+            cleanGeneratedReportArtifacts(outputDirectory);
+        } catch (IOException exception) {
+            PrintWriter err = spec.commandLine().getErr();
+            err.printf("Failed to prepare output directory: %s%n", exception.getMessage());
+            return 1;
+        }
+
         ParsedEventLog parsedEventLog;
         try {
             parsedEventLog = parser.parse(eventLogPath);
         } catch (IOException exception) {
             PrintWriter err = spec.commandLine().getErr();
-            err.printf("Failed to read Spark event log: %s%n", exception.getMessage());
+            err.printf("Failed to read Spark event log: %s%n", displayErrorMessage(exception));
+            err.println("SparkDoctor expects Spark event logs in JSON-lines format, with one Spark listener event per line.");
+            err.println("Supported inputs: plain event log files, event log directories, .gz, .zstd/.zst, .lz4, and .snappy files.");
+            err.println("If this is a rolling Spark event log, point SparkDoctor at the event-log directory.");
+            err.println("No report artifacts were written.");
             return 1;
         }
 
@@ -150,5 +163,35 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
     private String bottleneckLocation(int stageId) {
         return stageId < 0 ? "application" : "stage " + stageId;
+    }
+
+    private void cleanGeneratedReportArtifacts(Path outputDirectory) throws IOException {
+        if (!Files.isDirectory(outputDirectory)) {
+            return;
+        }
+
+        Files.deleteIfExists(outputDirectory.resolve("analysis.json"));
+        Files.deleteIfExists(outputDirectory.resolve("recommendations.md"));
+        Files.deleteIfExists(outputDirectory.resolve("sql-executions.md"));
+
+        try (Stream<Path> paths = Files.list(outputDirectory)) {
+            for (Path path : paths.filter(this::isSqlPlanDotFile).toList()) {
+                Files.deleteIfExists(path);
+            }
+        }
+    }
+
+    private boolean isSqlPlanDotFile(Path path) {
+        String fileName = path.getFileName().toString();
+        return fileName.startsWith("sql-execution-") && fileName.endsWith(".dot");
+    }
+
+    private String displayErrorMessage(IOException exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return exception.getClass().getSimpleName();
+        }
+
+        return message.replace('\n', ' ').replace('\r', ' ');
     }
 }

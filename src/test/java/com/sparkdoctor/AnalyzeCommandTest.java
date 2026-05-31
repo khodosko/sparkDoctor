@@ -47,6 +47,35 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeExplainsInvalidEventLogAndRemovesStaleReportArtifacts() throws Exception {
+        Path invalidEventLog = tempDir.resolve("invalid-eventlog.json");
+        Files.writeString(invalidEventLog, "this is not json\n");
+        Path outputDirectory = tempDir.resolve("stale-report");
+        Files.createDirectories(outputDirectory);
+        Files.writeString(outputDirectory.resolve("analysis.json"), "{}\n");
+        Files.writeString(outputDirectory.resolve("recommendations.md"), "stale\n");
+        Files.writeString(outputDirectory.resolve("sql-executions.md"), "stale\n");
+        Files.writeString(outputDirectory.resolve("sql-execution-0.dot"), "stale\n");
+        Files.writeString(outputDirectory.resolve("keep.txt"), "do not delete\n");
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(invalidEventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("Failed to read Spark event log"));
+        assertTrue(errorOutput.toString().contains("JSON-lines format"));
+        assertTrue(errorOutput.toString().contains(".zstd/.zst"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
+        assertTrue(Files.notExists(outputDirectory.resolve("recommendations.md")));
+        assertTrue(Files.notExists(outputDirectory.resolve("sql-executions.md")));
+        assertTrue(Files.notExists(outputDirectory.resolve("sql-execution-0.dot")));
+        assertTrue(Files.exists(outputDirectory.resolve("keep.txt")));
+    }
+
+    @Test
     void analyzePrintsParsedApplicationSummary() {
         StringWriter output = new StringWriter();
         CommandLine commandLine = new CommandLine(new AnalyzeCommand());

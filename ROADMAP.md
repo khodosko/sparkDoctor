@@ -26,6 +26,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - generate `sql-executions.md` when SQL execution plans are present
 - generate Graphviz `.dot` files for structured SQL execution plans
 - provide a terminal summary for quick inspection
+- print actionable parse-failure guidance and clear stale generated report artifacts before each analysis
 
 ## Near-Term
 
@@ -38,7 +39,6 @@ These are the next open-source priorities.
 ### Better Report Output
 
 - Add a local HTML report.
-- Add evidence tables for bottlenecks.
 - Add a clearer severity summary.
 - Make recommendation wording more specific to the observed evidence.
 - Annotate SQL DOT graphs with metrics, highlighted bottleneck nodes, and short guidance labels.

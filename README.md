@@ -515,6 +515,8 @@ Use `analysis.json` when you want the raw evidence:
 - look at `bottlenecks` for detected issues and evidence thresholds
 - look at `recommendations` for suggested next actions
 
+If parsing fails, SparkDoctor prints the expected event-log format and supported compression types. It also removes SparkDoctor-generated report artifacts from the output directory so stale output from an earlier successful run is not mistaken for the failed run's result.
+
 ## Known Limitations
 
 SparkDoctor is not a complete Spark UI replacement yet.
