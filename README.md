@@ -1,8 +1,8 @@
 # SparkDoctor
 
-SparkDoctor is a local-first CLI for analyzing Apache Spark event logs.
+Find skew, spills, wasted shuffle work, failed stages, and performance regressions from Spark event logs in seconds.
 
-It is an Apache Spark event log analyzer and Spark performance diagnostics tool for engineers who want to inspect Spark job performance locally from event logs.
+SparkDoctor is a local-first CLI for analyzing Apache Spark event logs.
 
 Spark jobs often get slow or expensive because of a few recurring problems: skewed tasks, skewed shuffle partitions, memory pressure, disk spill, and retries that hide the real shape of the workload. SparkDoctor reads Spark event logs and turns those raw execution metrics into a small set of bottlenecks and recommendations.
 
