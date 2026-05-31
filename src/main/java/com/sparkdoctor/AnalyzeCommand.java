@@ -2,6 +2,7 @@ package com.sparkdoctor;
 
 import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.ApplicationSummary;
+import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.output.AnalysisJsonWriter;
 import com.sparkdoctor.output.RecommendationsMarkdownWriter;
@@ -12,8 +13,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -128,6 +132,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Tasks: %d%n", parsedEventLog.analysisSummary().tasks());
         out.printf("SQL executions: %d%n", parsedEventLog.sqlExecutions().size());
         out.printf("Issues detected: %d%n", parsedEventLog.analysisSummary().issuesDetected());
+        out.printf("Severity summary: %s%n", severitySummary(parsedEventLog.bottlenecks()));
         out.printf("Recommendations: %d%n", parsedEventLog.recommendations().size());
         if (!parsedEventLog.bottlenecks().isEmpty()) {
             out.println("Top bottlenecks:");
@@ -163,6 +168,25 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
     private String bottleneckLocation(int stageId) {
         return stageId < 0 ? "application" : "stage " + stageId;
+    }
+
+    private String severitySummary(List<Bottleneck> bottlenecks) {
+        if (bottlenecks.isEmpty()) {
+            return "none";
+        }
+
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("high", 0L);
+        counts.put("medium", 0L);
+        counts.put("low", 0L);
+        for (var bottleneck : bottlenecks) {
+            counts.merge(bottleneck.severity(), 1L, Long::sum);
+        }
+
+        return counts.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
     }
 
     private void cleanGeneratedReportArtifacts(Path outputDirectory) throws IOException {

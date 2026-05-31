@@ -438,6 +438,7 @@ Stages failed: 0
 Tasks: 2
 SQL executions: 0
 Issues detected: 1
+Severity summary: medium=1
 Recommendations: 1
 Top bottlenecks:
 - [medium] spill_pressure (stage 9): Stage 9 has spill pressure.
@@ -499,6 +500,7 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
 Start with the terminal summary:
 
 - `Issues detected` tells you how many bottlenecks were found.
+- `Severity summary` shows how many detected issues are high, medium, or low severity.
 - `Recommendations` tells you how many actions SparkDoctor generated.
 - `Top bottlenecks` shows the first few issues with severity and stage ID.
 

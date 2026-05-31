@@ -95,6 +95,7 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Tasks: 3"));
         assertTrue(output.toString().contains("SQL executions: 0"));
         assertTrue(output.toString().contains("Issues detected: 0"));
+        assertTrue(output.toString().contains("Severity summary: none"));
         assertTrue(output.toString().contains("Recommendations: 0"));
     }
 
@@ -333,6 +334,7 @@ final class AnalyzeCommandTest {
 
         assertEquals(0, exitCode);
         assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Severity summary: medium=1"));
         assertTrue(output.toString().contains("Recommendations: 1"));
         assertTrue(output.toString().contains(
                 "- [medium] oversized_shuffle_partitions (stage 10): Stage 10 has oversized shuffle partitions."));

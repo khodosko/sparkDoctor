@@ -54,6 +54,7 @@ final class RecommendationsMarkdownWriterTest {
         assertTrue(markdown.contains("- Jobs completed: 0"));
         assertTrue(markdown.contains("- Stages completed: 0"));
         assertTrue(markdown.contains("- Issues detected: 1"));
+        assertTrue(markdown.contains("- Severity summary: medium=1"));
         assertTrue(markdown.contains("## Stage Hotspots"));
         assertTrue(markdown.contains("- Stage 4 (aggregate): issues=1"));
         assertTrue(markdown.contains("completedTasks=2"));
@@ -77,6 +78,7 @@ final class RecommendationsMarkdownWriterTest {
         Path recommendationsPath = writer.write(outputDirectory, report);
 
         String markdown = Files.readString(recommendationsPath);
+        assertTrue(markdown.contains("- Severity summary: none"));
         assertTrue(markdown.contains("No recommendations generated."));
     }
 
@@ -104,6 +106,7 @@ final class RecommendationsMarkdownWriterTest {
         Path recommendationsPath = writer.write(outputDirectory, report);
 
         String markdown = Files.readString(recommendationsPath);
+        assertTrue(markdown.contains("- Severity summary: high=1"));
         assertTrue(markdown.contains("- Scope: application"));
         assertTrue(markdown.contains("- Related bottleneck: failed_job"));
         assertTrue(markdown.contains("- jobId: 3"));

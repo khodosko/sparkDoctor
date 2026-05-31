@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +40,8 @@ public final class RecommendationsMarkdownWriter {
         markdown.append("- Stages completed: ").append(report.summary().stagesCompleted()).append("\n");
         markdown.append("- Stages failed: ").append(report.summary().stagesFailed()).append("\n");
         markdown.append("- Tasks: ").append(report.summary().tasks()).append("\n");
-        markdown.append("- Issues detected: ").append(report.summary().issuesDetected()).append("\n\n");
+        markdown.append("- Issues detected: ").append(report.summary().issuesDetected()).append("\n");
+        markdown.append("- Severity summary: ").append(severitySummary(report.bottlenecks())).append("\n\n");
         appendStageHotspots(markdown, report);
 
         if (report.recommendations().isEmpty()) {
@@ -91,6 +93,25 @@ public final class RecommendationsMarkdownWriter {
     private boolean matchesRecommendation(Bottleneck bottleneck, Recommendation recommendation) {
         return bottleneck.stageId() == recommendation.stageId()
                 && bottleneck.type().equals(recommendation.relatedBottleneckType());
+    }
+
+    private String severitySummary(List<Bottleneck> bottlenecks) {
+        if (bottlenecks.isEmpty()) {
+            return "none";
+        }
+
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("high", 0L);
+        counts.put("medium", 0L);
+        counts.put("low", 0L);
+        for (Bottleneck bottleneck : bottlenecks) {
+            counts.merge(bottleneck.severity(), 1L, Long::sum);
+        }
+
+        return counts.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
     }
 
     private void appendStageHotspots(StringBuilder markdown, AnalysisReport report) {
