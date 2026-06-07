@@ -68,7 +68,11 @@ final class RecommendationEngineTest {
                 "medium",
                 4,
                 "Stage 4 has oversized shuffle partitions.",
-                Map.of("p95TaskShuffleReadBytes", 314572800L));
+                Map.of(
+                        "shuffleReadingTasks", 4,
+                        "p95TaskShuffleReadBytes", 300L * 1024L * 1024L,
+                        "maxTaskShuffleReadBytes", 340L * 1024L * 1024L,
+                        "mediumP95ShuffleReadThresholdBytes", 256L * 1024L * 1024L));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -79,6 +83,10 @@ final class RecommendationEngineTest {
         assertEquals("Reduce oversized shuffle partitions", recommendation.title());
         assertEquals("oversized_shuffle_partitions", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("4 shuffle-reading tasks"));
+        assertTrue(recommendation.description().contains("p95 shuffle read 300 MiB"));
+        assertTrue(recommendation.description().contains("max shuffle read 340 MiB"));
+        assertTrue(recommendation.description().contains("256 MiB medium threshold"));
         assertTrue(recommendation.description().contains("Increase shuffle parallelism"));
         assertTrue(recommendation.description().contains("partition sizing"));
     }
@@ -90,7 +98,10 @@ final class RecommendationEngineTest {
                 "medium",
                 4,
                 "Stage 4 has low shuffle parallelism.",
-                Map.of("shuffleReadBytes", 1258291200L));
+                Map.of(
+                        "shuffleReadingTasks", 6,
+                        "shuffleReadBytes", 1200L * 1024L * 1024L,
+                        "avgTaskShuffleReadBytes", 200L * 1024L * 1024L));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -101,6 +112,9 @@ final class RecommendationEngineTest {
         assertEquals("Increase shuffle parallelism", recommendation.title());
         assertEquals("low_shuffle_parallelism", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("1.2 GiB of shuffle data"));
+        assertTrue(recommendation.description().contains("only 6 shuffle-reading tasks"));
+        assertTrue(recommendation.description().contains("200 MiB per task"));
         assertTrue(recommendation.description().contains("spark.sql.shuffle.partitions"));
         assertTrue(recommendation.description().contains("coalesce"));
     }
@@ -343,7 +357,11 @@ final class RecommendationEngineTest {
                 "high",
                 8,
                 "Stage 8 failed.",
-                Map.of("failureReason", "Fetch failed", "failedTaskAttempts", 2));
+                Map.of(
+                        "failureReason", "Fetch failed",
+                        "failedTaskAttempts", 2,
+                        "failedTaskAttemptDurationMillis", 4500L,
+                        "failedTaskAttemptReasons", List.of("FetchFailed", "ExecutorLostFailure")));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -356,7 +374,8 @@ final class RecommendationEngineTest {
         assertEquals(8, recommendation.stageId());
         assertTrue(recommendation.description().contains("stage failure reason"));
         assertTrue(recommendation.description().contains("Failure reason: Fetch failed."));
-        assertTrue(recommendation.description().contains("2 failed task attempts"));
+        assertTrue(recommendation.description().contains("2 failed task attempts consuming 4.5 s"));
+        assertTrue(recommendation.description().contains("Failed task reasons: [FetchFailed, ExecutorLostFailure]."));
         assertTrue(recommendation.description().contains("out-of-memory"));
     }
 

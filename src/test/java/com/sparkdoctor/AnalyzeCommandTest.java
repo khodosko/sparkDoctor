@@ -815,7 +815,8 @@ final class AnalyzeCommandTest {
         assertTrue(recommendationsMarkdown.contains("### Investigate failed Spark stage"));
         assertTrue(recommendationsMarkdown.contains("- Stage ID: 13"));
         assertTrue(recommendationsMarkdown.contains("Failure reason: Fetch failed: executor lost during shuffle read."));
-        assertTrue(recommendationsMarkdown.contains("The stage recorded 2 failed task attempts."));
+        assertTrue(recommendationsMarkdown.contains("The stage recorded 2 failed task attempts consuming 4.5 s."));
+        assertTrue(recommendationsMarkdown.contains("Failed task reasons: [FetchFailed, ExecutorLostFailure]."));
     }
 
     @Test

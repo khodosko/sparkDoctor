@@ -75,8 +75,7 @@ public final class RecommendationEngine {
                 "reduce-oversized-shuffle-partitions",
                 bottleneck.severity(),
                 "Reduce oversized shuffle partitions",
-                "Stage %d has shuffle-reading tasks processing large partitions. "
-                        .formatted(bottleneck.stageId())
+                oversizedShufflePartitionsEvidenceSentence(bottleneck)
                         + "Increase shuffle parallelism, repartition before expensive wide operations, "
                         + "reduce data before joins or aggregations, and review filters or projections that could "
                         + "run before the shuffle. Treat executor memory increases as a secondary option after "
@@ -90,8 +89,7 @@ public final class RecommendationEngine {
                 "increase-shuffle-parallelism",
                 bottleneck.severity(),
                 "Increase shuffle parallelism",
-                "Stage %d read a large amount of shuffle data with relatively few shuffle-reading tasks. "
-                        .formatted(bottleneck.stageId())
+                lowShuffleParallelismEvidenceSentence(bottleneck)
                         + "Increase spark.sql.shuffle.partitions or repartition before wide joins and aggregations, "
                         + "avoid unnecessary coalesce calls before expensive shuffles, and verify output-file "
                         + "requirements are not forcing low parallelism.",
@@ -259,10 +257,62 @@ public final class RecommendationEngine {
                     .append(attempts)
                     .append(" failed task attempt")
                     .append(attempts == 1 ? "" : "s")
+                    .append(failedStageAttemptDurationSentence(bottleneck))
+                    .append(". ");
+        }
+
+        Object failedTaskAttemptReasons = bottleneck.evidence().get("failedTaskAttemptReasons");
+        if (failedTaskAttemptReasons instanceof List<?> reasons && !reasons.isEmpty()) {
+            evidence.append("Failed task reasons: ")
+                    .append(reasons)
                     .append(". ");
         }
 
         return evidence.toString();
+    }
+
+    private String oversizedShufflePartitionsEvidenceSentence(Bottleneck bottleneck) {
+        Integer shuffleReadingTasks = intEvidence(bottleneck, "shuffleReadingTasks");
+        Long p95ShuffleReadBytes = longEvidence(bottleneck, "p95TaskShuffleReadBytes");
+        Long maxShuffleReadBytes = longEvidence(bottleneck, "maxTaskShuffleReadBytes");
+        Long mediumThreshold = longEvidence(bottleneck, "mediumP95ShuffleReadThresholdBytes");
+        if (shuffleReadingTasks == null || p95ShuffleReadBytes == null || maxShuffleReadBytes == null) {
+            return "Stage %d has shuffle-reading tasks processing large partitions. "
+                    .formatted(bottleneck.stageId());
+        }
+
+        String thresholdSentence = "";
+        if (mediumThreshold != null && p95ShuffleReadBytes >= mediumThreshold) {
+            thresholdSentence = " The p95 shuffle read crossed the %s medium threshold."
+                    .formatted(HumanReadableFormat.bytes(mediumThreshold));
+        }
+
+        return "Stage %d has %d shuffle-reading task%s with p95 shuffle read %s and max shuffle read %s.%s "
+                .formatted(
+                        bottleneck.stageId(),
+                        shuffleReadingTasks,
+                        shuffleReadingTasks == 1 ? "" : "s",
+                        HumanReadableFormat.bytes(p95ShuffleReadBytes),
+                        HumanReadableFormat.bytes(maxShuffleReadBytes),
+                        thresholdSentence);
+    }
+
+    private String lowShuffleParallelismEvidenceSentence(Bottleneck bottleneck) {
+        Integer shuffleReadingTasks = intEvidence(bottleneck, "shuffleReadingTasks");
+        Long shuffleReadBytes = longEvidence(bottleneck, "shuffleReadBytes");
+        Long avgTaskShuffleReadBytes = longEvidence(bottleneck, "avgTaskShuffleReadBytes");
+        if (shuffleReadingTasks == null || shuffleReadBytes == null || avgTaskShuffleReadBytes == null) {
+            return "Stage %d read a large amount of shuffle data with relatively few shuffle-reading tasks. "
+                    .formatted(bottleneck.stageId());
+        }
+
+        return "Stage %d read %s of shuffle data with only %d shuffle-reading task%s, about %s per task. "
+                .formatted(
+                        bottleneck.stageId(),
+                        HumanReadableFormat.bytes(shuffleReadBytes),
+                        shuffleReadingTasks,
+                        shuffleReadingTasks == 1 ? "" : "s",
+                        HumanReadableFormat.bytes(avgTaskShuffleReadBytes));
     }
 
     private String shufflePartitionSkewEvidenceSentence(Bottleneck bottleneck) {
@@ -322,6 +372,15 @@ public final class RecommendationEngine {
                         HumanReadableFormat.millis(failedAttemptDurationMillis),
                         failedTaskAttempts,
                         failedTaskAttempts == 1 ? "" : "s");
+    }
+
+    private String failedStageAttemptDurationSentence(Bottleneck bottleneck) {
+        Long failedAttemptDurationMillis = longEvidence(bottleneck, "failedTaskAttemptDurationMillis");
+        if (failedAttemptDurationMillis == null || failedAttemptDurationMillis <= 0) {
+            return "";
+        }
+
+        return " consuming " + HumanReadableFormat.millis(failedAttemptDurationMillis);
     }
 
     private Long longEvidence(Bottleneck bottleneck, String key) {
