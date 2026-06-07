@@ -29,6 +29,8 @@ SparkDoctor currently focuses on offline event log analysis:
 - show severity summaries in terminal and markdown output
 - print actionable parse-failure guidance and clear stale generated report artifacts before each analysis
 - document how to find Spark event logs from local Spark, Spark History Server, Databricks, EMR, and AWS Glue
+- use the Gradle wrapper for repeatable contributor builds
+- publish release archives through GitHub Releases
 
 ## Near-Term
 
@@ -54,9 +56,7 @@ These are the next open-source priorities.
 
 ### Easier Installation
 
-- Add a Gradle wrapper.
-- Publish versioned GitHub releases.
-- Provide downloadable CLI archives.
+- Publish the first versioned GitHub release.
 - Document common installation paths.
 
 ## Later

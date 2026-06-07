@@ -347,16 +347,34 @@ failedTaskAttemptReasons = [FetchFailed, ExecutorLostFailure]
 ## Requirements
 
 - Java 17
-- Gradle
+- Gradle is only required when building from source
 
 Check your setup:
 
 ```bash
 java -version
-gradle -v
 ```
 
 ## Install
+
+### From A GitHub Release
+
+Download the latest release archive from GitHub Releases, unzip it, and add the `bin` directory to your shell:
+
+```bash
+curl -L -o sparkdoctor-0.1.0.zip https://github.com/khodosko/sparkDoctor/releases/download/v0.1.0/sparkdoctor-0.1.0.zip
+unzip sparkdoctor-0.1.0.zip
+export PATH="$PWD/sparkdoctor-0.1.0/bin:$PATH"
+```
+
+Verify the command is available:
+
+```bash
+sparkdoctor --help
+sparkdoctor analyze --help
+```
+
+### Build From Source
 
 Clone the repository:
 
@@ -368,13 +386,13 @@ cd sparkDoctor
 Run tests:
 
 ```bash
-gradle test
+./gradlew test
 ```
 
 Install the local CLI launcher:
 
 ```bash
-gradle installDist
+./gradlew installDist
 ```
 
 Add the generated launcher to your current shell:
@@ -640,13 +658,13 @@ Helpful details to include:
 Run tests:
 
 ```bash
-gradle test
+./gradlew test
 ```
 
 Run the CLI against fixtures:
 
 ```bash
-gradle installDist
+./gradlew installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/skewed-eventlog.json --out ./sparkdoctor-report
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/shuffle-skewed-eventlog.json --out ./sparkdoctor-report
@@ -663,10 +681,24 @@ gradle installDist
 ./build/install/sparkdoctor/bin/sparkdoctor analyze src/test/resources/fixtures/real-spark-eventlog.json --out ./sparkdoctor-report
 ```
 
-For development, `gradle run` still works:
+For development, `./gradlew run` still works:
 
 ```bash
-gradle run --args="analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report"
+./gradlew run --args="analyze src/test/resources/fixtures/minimal-eventlog.json --out ./sparkdoctor-report"
+```
+
+Build a local release archive:
+
+```bash
+./gradlew distZip
+ls build/distributions/
+```
+
+GitHub publishes release archives when a version tag is pushed, for example:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 Generate a real Spark event log fixture:
@@ -690,7 +722,7 @@ SparkDoctor is open source, and contributions are welcome.
 Before opening a pull request:
 
 - Add or update unit tests for every behavior change.
-- Run `gradle test`.
+- Run `./gradlew test`.
 - Keep changes focused and explain the Spark behavior being parsed, detected, or reported.
 - Do not weaken, skip, or delete existing tests to make a change pass.
 

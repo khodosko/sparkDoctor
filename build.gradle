@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.sparkdoctor"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 java {
     toolchain {
@@ -15,6 +15,17 @@ java {
 application {
     applicationName = "sparkdoctor"
     mainClass = "com.sparkdoctor.SparkDoctorCli"
+}
+
+distributions {
+    main {
+        distributionBaseName = "sparkdoctor"
+        contents {
+            from("README.md")
+            from("LICENSE")
+            from("CHANGELOG.md")
+        }
+    }
 }
 
 dependencies {
@@ -35,4 +46,9 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named("test") {
     useJUnitPlatform()
+}
+
+tasks.named("wrapper") {
+    gradleVersion = "9.5.1"
+    distributionType = org.gradle.api.tasks.wrapper.Wrapper.DistributionType.BIN
 }
