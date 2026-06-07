@@ -144,7 +144,7 @@ Evidence:
 - diskBytesSpilled: 314572800
 - mediumDiskSpillThresholdBytes: 268435456
 
-Stage 9 spilled a significant amount of data during task execution.
+Stage 9 spilled 300 MiB to disk and 128 MiB to memory across 2 completed tasks.
 ```
 
 For output files, `analysis.json` examples, SQL plan output, and report interpretation, see [docs/output.md](docs/output.md).

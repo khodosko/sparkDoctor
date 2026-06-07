@@ -2,6 +2,7 @@ package com.sparkdoctor.analysis;
 
 import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.Recommendation;
+import com.sparkdoctor.util.HumanReadableFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,8 +63,7 @@ public final class RecommendationEngine {
                 "mitigate-shuffle-partition-skew",
                 bottleneck.severity(),
                 "Mitigate shuffle partition skew",
-                "Stage %d has one or more shuffle partitions much larger than the median partition. "
-                        .formatted(bottleneck.stageId())
+                shufflePartitionSkewEvidenceSentence(bottleneck)
                         + "Enable or tune Spark AQE skew join handling, inspect skewed join keys, "
                         + "consider salting hot keys, repartition by a better key, or pre-aggregate before joins.",
                 bottleneck.type(),
@@ -104,8 +104,7 @@ public final class RecommendationEngine {
                 "reduce-spill-pressure",
                 bottleneck.severity(),
                 "Reduce spill pressure",
-                "Stage %d spilled a significant amount of data during task execution. "
-                        .formatted(bottleneck.stageId())
+                spillPressureEvidenceSentence(bottleneck)
                         + "Spill usually indicates memory pressure during shuffle, sort, join, or aggregation. "
                         + "Check for skew by comparing max task duration and spill against typical tasks, "
                         + "increase shuffle parallelism if tasks are too large, reduce per-task data before "
@@ -161,8 +160,7 @@ public final class RecommendationEngine {
                 "investigate-retry-waste",
                 bottleneck.severity(),
                 "Investigate retry waste",
-                "Stage %d spent meaningful time in failed task attempts before successful work completed. "
-                        .formatted(bottleneck.stageId())
+                retryWasteEvidenceSentence(bottleneck)
                         + "Inspect failed task reasons and executor logs for executor loss, out-of-memory errors, "
                         + "shuffle fetch failures, bad input records, preemption, or unstable worker nodes. "
                         + "Fix retry instability before normal performance tuning.",
@@ -265,5 +263,82 @@ public final class RecommendationEngine {
         }
 
         return evidence.toString();
+    }
+
+    private String shufflePartitionSkewEvidenceSentence(Bottleneck bottleneck) {
+        Long medianShuffleReadBytes = longEvidence(bottleneck, "medianTaskShuffleReadBytes");
+        Long maxShuffleReadBytes = longEvidence(bottleneck, "maxTaskShuffleReadBytes");
+        Object skewRatio = bottleneck.evidence().get("skewRatio");
+        if (medianShuffleReadBytes == null || maxShuffleReadBytes == null || skewRatio == null) {
+            return "Stage %d has one or more shuffle partitions much larger than the median partition. "
+                    .formatted(bottleneck.stageId());
+        }
+
+        return "Stage %d has a shuffle task reading %s while the median shuffle task read %s, a %sx skew ratio. "
+                .formatted(
+                        bottleneck.stageId(),
+                        HumanReadableFormat.bytes(maxShuffleReadBytes),
+                        HumanReadableFormat.bytes(medianShuffleReadBytes),
+                        skewRatio);
+    }
+
+    private String spillPressureEvidenceSentence(Bottleneck bottleneck) {
+        Long diskBytesSpilled = longEvidence(bottleneck, "diskBytesSpilled");
+        Long memoryBytesSpilled = longEvidence(bottleneck, "memoryBytesSpilled");
+        Integer completedTasks = intEvidence(bottleneck, "completedTasks");
+        Long mediumDiskThreshold = longEvidence(bottleneck, "mediumDiskSpillThresholdBytes");
+        if (diskBytesSpilled == null || memoryBytesSpilled == null || completedTasks == null) {
+            return "Stage %d spilled a significant amount of data during task execution. "
+                    .formatted(bottleneck.stageId());
+        }
+
+        String thresholdSentence = "";
+        if (mediumDiskThreshold != null && diskBytesSpilled >= mediumDiskThreshold) {
+            thresholdSentence = " Disk spill crossed the %s medium threshold."
+                    .formatted(HumanReadableFormat.bytes(mediumDiskThreshold));
+        }
+
+        return "Stage %d spilled %s to disk and %s to memory across %d completed task%s.%s "
+                .formatted(
+                        bottleneck.stageId(),
+                        HumanReadableFormat.bytes(diskBytesSpilled),
+                        HumanReadableFormat.bytes(memoryBytesSpilled),
+                        completedTasks,
+                        completedTasks == 1 ? "" : "s",
+                        thresholdSentence);
+    }
+
+    private String retryWasteEvidenceSentence(Bottleneck bottleneck) {
+        Integer failedTaskAttempts = intEvidence(bottleneck, "failedTaskAttempts");
+        Long failedAttemptDurationMillis = longEvidence(bottleneck, "failedTaskAttemptDurationMillis");
+        if (failedTaskAttempts == null || failedAttemptDurationMillis == null) {
+            return "Stage %d spent meaningful time in failed task attempts before successful work completed. "
+                    .formatted(bottleneck.stageId());
+        }
+
+        return "Stage %d spent %s in %d failed task attempt%s before successful work completed. "
+                .formatted(
+                        bottleneck.stageId(),
+                        HumanReadableFormat.millis(failedAttemptDurationMillis),
+                        failedTaskAttempts,
+                        failedTaskAttempts == 1 ? "" : "s");
+    }
+
+    private Long longEvidence(Bottleneck bottleneck, String key) {
+        Object value = bottleneck.evidence().get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+
+        return null;
+    }
+
+    private Integer intEvidence(Bottleneck bottleneck, String key) {
+        Object value = bottleneck.evidence().get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+
+        return null;
     }
 }

@@ -40,7 +40,10 @@ final class RecommendationEngineTest {
                 "high",
                 4,
                 "Stage 4 has shuffle partition skew.",
-                Map.of("skewRatio", 30.0));
+                Map.of(
+                        "medianTaskShuffleReadBytes", 10L * 1024L * 1024L,
+                        "maxTaskShuffleReadBytes", 300L * 1024L * 1024L,
+                        "skewRatio", 30.0));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -51,6 +54,9 @@ final class RecommendationEngineTest {
         assertEquals("Mitigate shuffle partition skew", recommendation.title());
         assertEquals("shuffle_partition_skew", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("300 MiB"));
+        assertTrue(recommendation.description().contains("10 MiB"));
+        assertTrue(recommendation.description().contains("30.0x skew ratio"));
         assertTrue(recommendation.description().contains("AQE skew join"));
         assertTrue(recommendation.description().contains("salting"));
     }
@@ -106,7 +112,11 @@ final class RecommendationEngineTest {
                 "medium",
                 4,
                 "Stage 4 has spill pressure.",
-                Map.of("diskBytesSpilled", 314572800L));
+                Map.of(
+                        "completedTasks", 2,
+                        "diskBytesSpilled", 314572800L,
+                        "memoryBytesSpilled", 134217728L,
+                        "mediumDiskSpillThresholdBytes", 268435456L));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -117,6 +127,10 @@ final class RecommendationEngineTest {
         assertEquals("Reduce spill pressure", recommendation.title());
         assertEquals("spill_pressure", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("300 MiB to disk"));
+        assertTrue(recommendation.description().contains("128 MiB to memory"));
+        assertTrue(recommendation.description().contains("2 completed tasks"));
+        assertTrue(recommendation.description().contains("256 MiB medium threshold"));
         assertTrue(recommendation.description().contains("shuffle, sort, join, or aggregation"));
         assertTrue(recommendation.description().contains("partition sizing and skew"));
     }
@@ -194,7 +208,9 @@ final class RecommendationEngineTest {
                 "medium",
                 4,
                 "Stage 4 has retry waste from failed task attempts.",
-                Map.of("failedTaskAttempts", 3));
+                Map.of(
+                        "failedTaskAttempts", 3,
+                        "failedTaskAttemptDurationMillis", 30_000L));
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -205,6 +221,7 @@ final class RecommendationEngineTest {
         assertEquals("Investigate retry waste", recommendation.title());
         assertEquals("retry_waste", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertTrue(recommendation.description().contains("30 s in 3 failed task attempts"));
         assertTrue(recommendation.description().contains("failed task reasons"));
         assertTrue(recommendation.description().contains("Fix retry instability"));
     }
