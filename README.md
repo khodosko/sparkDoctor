@@ -57,15 +57,15 @@ For help finding event logs from local Spark, Spark History Server, Databricks, 
 Download the latest release archive, unzip it, and run the CLI:
 
 ```bash
-curl -L -o sparkdoctor-0.1.0.zip https://github.com/khodosko/sparkDoctor/releases/download/v0.1.0/sparkdoctor-0.1.0.zip
-unzip sparkdoctor-0.1.0.zip
-./sparkdoctor-0.1.0/bin/sparkdoctor --help
+curl -L -o sparkdoctor-0.1.1.zip https://github.com/khodosko/sparkDoctor/releases/download/v0.1.1/sparkdoctor-0.1.1.zip
+unzip sparkdoctor-0.1.1.zip
+./sparkdoctor-0.1.1/bin/sparkdoctor --help
 ```
 
 Optionally add it to your shell:
 
 ```bash
-export PATH="$PWD/sparkdoctor-0.1.0/bin:$PATH"
+export PATH="$PWD/sparkdoctor-0.1.1/bin:$PATH"
 ```
 
 ### Build From Source

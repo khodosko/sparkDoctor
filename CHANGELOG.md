@@ -4,6 +4,12 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+## 0.1.1 - 2026-06-06
+
+- Shortened the README into a quick-start project overview for new users.
+- Moved detailed detection rules, event-log discovery guidance, output interpretation, and development instructions into `docs/`.
+- Updated release archives to include project docs, contribution guidance, and roadmap files so README links work in downloaded distributions.
+
 ## 0.1.0 - 2026-06-06
 
 - Added the local `sparkdoctor analyze` CLI.
