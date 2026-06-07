@@ -4,6 +4,11 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+## 0.1.2 - 2026-06-07
+
+- Improved recommendation wording for spill pressure, shuffle partition skew, retry waste, oversized shuffle partitions, low shuffle parallelism, and failed stages.
+- Added human-readable evidence in key recommendations, including MiB/GiB byte values, seconds, task counts, failed attempt duration, and threshold context.
+
 ## 0.1.1 - 2026-06-06
 
 - Shortened the README into a quick-start project overview for new users.
