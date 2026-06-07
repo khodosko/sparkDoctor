@@ -24,6 +24,11 @@ distributions {
             from("README.md")
             from("LICENSE")
             from("CHANGELOG.md")
+            from("CONTRIBUTING.md")
+            from("ROADMAP.md")
+            from("docs") {
+                into "docs"
+            }
         }
     }
 }

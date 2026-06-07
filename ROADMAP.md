@@ -31,6 +31,7 @@ SparkDoctor currently focuses on offline event log analysis:
 - document how to find Spark event logs from local Spark, Spark History Server, Databricks, EMR, and AWS Glue
 - use the Gradle wrapper for repeatable contributor builds
 - publish release archives through GitHub Releases
+- keep the README focused on quick start while detailed detection, event-log, output, and development docs live under `docs/`
 
 ## Near-Term
 
