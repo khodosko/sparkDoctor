@@ -42,9 +42,11 @@ final class SqlExecutionsMarkdownWriterTest {
                         "Final Plan",
                         "",
                         List.of(
+                                new SqlPlanOperatorSummary("AdaptiveSparkPlan", 1),
                                 new SqlPlanOperatorSummary("Exchange", 2),
                                 new SqlPlanOperatorSummary("HashAggregate", 2),
-                                new SqlPlanOperatorSummary("Sort", 1)),
+                                new SqlPlanOperatorSummary("Sort", 1),
+                                new SqlPlanOperatorSummary("SortMergeJoin", 1)),
                         plan,
                         plan,
                         null)),
@@ -67,6 +69,13 @@ final class SqlExecutionsMarkdownWriterTest {
         assertTrue(markdown.contains("- Status: success"));
         assertTrue(markdown.contains("- DOT graph: `sql-execution-3.dot`"));
         assertTrue(markdown.contains("### Operator Summary"));
+        assertTrue(markdown.contains("- Exchanges: 2"));
+        assertTrue(markdown.contains("- Sorts: 1"));
+        assertTrue(markdown.contains("- HashAggregates: 2"));
+        assertTrue(markdown.contains("- Joins: 1"));
+        assertTrue(markdown.contains("- Scans: 0"));
+        assertTrue(markdown.contains("- AQE nodes: 1"));
+        assertTrue(markdown.contains("Detailed operator counts:"));
         assertTrue(markdown.contains("- Exchange: 2"));
         assertTrue(markdown.contains("- HashAggregate: 2"));
         assertTrue(markdown.contains("### Details"));

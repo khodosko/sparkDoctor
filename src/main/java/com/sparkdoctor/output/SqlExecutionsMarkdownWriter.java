@@ -6,9 +6,18 @@ import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.function.Predicate;
 
 public final class SqlExecutionsMarkdownWriter {
     private static final String SQL_EXECUTIONS_FILE_NAME = "sql-executions.md";
+    private static final List<OperatorCategory> OPERATOR_CATEGORIES = List.of(
+            new OperatorCategory("Exchanges", operator -> operator.name().contains("Exchange")),
+            new OperatorCategory("Sorts", operator -> "Sort".equals(operator.name())),
+            new OperatorCategory("HashAggregates", operator -> operator.name().contains("HashAggregate")),
+            new OperatorCategory("Joins", operator -> operator.name().contains("Join")),
+            new OperatorCategory("Scans", operator -> operator.name().contains("Scan")),
+            new OperatorCategory("AQE nodes", operator -> isAqeOperator(operator.name())));
 
     public Path write(Path outputDirectory, AnalysisReport report) throws IOException {
         Files.createDirectories(outputDirectory);
@@ -64,6 +73,16 @@ public final class SqlExecutionsMarkdownWriter {
         }
 
         markdown.append("### Operator Summary\n\n");
+        for (OperatorCategory category : OPERATOR_CATEGORIES) {
+            markdown.append("- ")
+                    .append(category.label())
+                    .append(": ")
+                    .append(category.count(sqlExecution.operatorSummaries()))
+                    .append("\n");
+        }
+        markdown.append("\n");
+
+        markdown.append("Detailed operator counts:\n\n");
         for (SqlPlanOperatorSummary operator : sqlExecution.operatorSummaries()) {
             markdown.append("- ")
                     .append(operator.name())
@@ -72,6 +91,12 @@ public final class SqlExecutionsMarkdownWriter {
                     .append("\n");
         }
         markdown.append("\n");
+    }
+
+    private static boolean isAqeOperator(String name) {
+        return name.equals("AdaptiveSparkPlan")
+                || name.startsWith("AQE")
+                || name.endsWith("QueryStage");
     }
 
     private void appendPlan(StringBuilder markdown, String title, String plan) {
@@ -106,5 +131,14 @@ public final class SqlExecutionsMarkdownWriter {
 
     private String display(Long value) {
         return value == null ? "unknown" : Long.toString(value);
+    }
+
+    private record OperatorCategory(String label, Predicate<SqlPlanOperatorSummary> matches) {
+        private int count(List<SqlPlanOperatorSummary> operatorSummaries) {
+            return operatorSummaries.stream()
+                    .filter(matches)
+                    .mapToInt(SqlPlanOperatorSummary::count)
+                    .sum();
+        }
     }
 }

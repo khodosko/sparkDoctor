@@ -94,7 +94,7 @@ Start with the terminal summary:
 
 Then open `recommendations.md` for stage hotspots, bottleneck evidence, and a readable explanation.
 
-Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping.
+Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping. The operator summary starts with grouped counts for common plan features such as Exchanges, Sorts, HashAggregates, Joins, Scans, and AQE nodes, then keeps detailed Spark operator counts below that.
 
 Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present. DOT labels include Spark SQL operator names, simple plan strings, and compact metric labels. Metric values are included when Spark exposes matching SQL accumulator values in the event log.
 
