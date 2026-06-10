@@ -141,8 +141,8 @@ Example `recommendations.md` excerpt:
 Evidence:
 
 - completedTasks: 2
-- diskBytesSpilled: 314572800
-- mediumDiskSpillThresholdBytes: 268435456
+- diskBytesSpilled: 314572800 (300 MiB)
+- mediumDiskSpillThresholdBytes: 268435456 (256 MiB)
 
 Stage 9 spilled 300 MiB to disk and 128 MiB to memory across 2 completed tasks.
 ```

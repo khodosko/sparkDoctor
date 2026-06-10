@@ -34,7 +34,9 @@ final class RecommendationsMarkdownWriterTest {
                         "medium",
                         4,
                         "Stage 4 has spill pressure.",
-                        Map.of("diskBytesSpilled", 314572800L))),
+                        Map.of(
+                                "diskBytesSpilled", 314572800L,
+                                "failedTaskAttemptDurationMillis", 30_000L))),
                 List.of(new Recommendation(
                         "reduce-spill-pressure",
                         "medium",
@@ -65,7 +67,8 @@ final class RecommendationsMarkdownWriterTest {
         assertTrue(markdown.contains("- Stage ID: 4"));
         assertTrue(markdown.contains("- Related bottleneck: spill_pressure"));
         assertTrue(markdown.contains("Evidence:"));
-        assertTrue(markdown.contains("- diskBytesSpilled: 314572800"));
+        assertTrue(markdown.contains("- diskBytesSpilled: 314572800 (300 MiB)"));
+        assertTrue(markdown.contains("- failedTaskAttemptDurationMillis: 30000 (30 s)"));
         assertTrue(markdown.contains("Stage 4 spilled a significant amount of data"));
     }
 

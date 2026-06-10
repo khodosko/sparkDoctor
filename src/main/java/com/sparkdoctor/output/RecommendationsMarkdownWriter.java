@@ -4,6 +4,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.Recommendation;
 import com.sparkdoctor.model.StageAnalysis;
+import com.sparkdoctor.util.HumanReadableFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -83,7 +84,7 @@ public final class RecommendationsMarkdownWriter {
                     .forEach(entry -> markdown.append("- ")
                             .append(entry.getKey())
                             .append(": ")
-                            .append(displayEvidence(entry.getValue()))
+                            .append(displayEvidence(entry.getKey(), entry.getValue()))
                             .append("\n"));
             markdown.append("\n");
             return;
@@ -175,8 +176,21 @@ public final class RecommendationsMarkdownWriter {
         return value == null ? "unknown" : Long.toString(value);
     }
 
-    private String displayEvidence(Object value) {
-        return value == null ? "null" : value.toString();
+    private String displayEvidence(String key, Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Number number) {
+            long longValue = number.longValue();
+            if (key.contains("Bytes")) {
+                return value + " (" + HumanReadableFormat.bytes(longValue) + ")";
+            }
+            if (key.contains("Millis")) {
+                return value + " (" + HumanReadableFormat.millis(longValue) + ")";
+            }
+        }
+
+        return value.toString();
     }
 
     private record StageHotspot(StageAnalysis stage, long issueCount, boolean failed) {
