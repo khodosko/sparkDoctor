@@ -1,0 +1,4 @@
+{"Event":"SparkListenerTaskEnd","Stage ID":0,"Task Type":"ResultTask","Task Info":{"Task ID":101,"Index":1,"Launch Time":1778846402000,"Finish Time":1778846405000},"Task Metrics":{"Memory Bytes Spilled":0,"Disk Bytes Spilled":0,"Shuffle Read Metrics":{"Local Bytes Read":0,"Remote Bytes Read":0}}}
+{"Event":"SparkListenerStageCompleted","Stage Info":{"Stage ID":0,"Stage Name":"spark4 rolling directory stage","Number of Tasks":2,"Failure Reason":null}}
+{"Event":"SparkListenerJobEnd","Job ID":0,"Completion Time":1778846406000,"Job Result":{"Result":"JobSucceeded"}}
+{"Event":"SparkListenerApplicationEnd","Timestamp":1778846407000}

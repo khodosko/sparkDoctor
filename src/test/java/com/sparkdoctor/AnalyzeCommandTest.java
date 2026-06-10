@@ -820,6 +820,36 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeReadsSparkFourParentEventLogDirectory() throws Exception {
+        JsonNode json = analyzeFixtureDirectory(
+                "src/test/resources/fixtures/spark4-eventlog-directory",
+                tempDir.resolve("spark4-parent-report"));
+
+        assertSparkFourDirectoryFixture(json, "spark4_directory_fixture", "local-spark4-directory-fixture");
+    }
+
+    @Test
+    void analyzeReadsSparkFourApplicationEventLogDirectory() throws Exception {
+        JsonNode json = analyzeFixtureDirectory(
+                "src/test/resources/fixtures/spark4-eventlog-directory/eventlog_v2_local-test",
+                tempDir.resolve("spark4-application-report"));
+
+        assertSparkFourDirectoryFixture(json, "spark4_directory_fixture", "local-spark4-directory-fixture");
+    }
+
+    @Test
+    void analyzeReadsSparkFourRollingEventLogDirectoryPartsInOrder() throws Exception {
+        JsonNode json = analyzeFixtureDirectory(
+                "src/test/resources/fixtures/spark4-rolling-eventlog-directory",
+                tempDir.resolve("spark4-rolling-report"));
+
+        assertSparkFourDirectoryFixture(
+                json,
+                "spark4_rolling_directory_fixture",
+                "local-spark4-rolling-directory-fixture");
+    }
+
+    @Test
     void analyzeReturnsErrorWhenAnalysisJsonCannotBeWritten() throws Exception {
         Path outputPathThatIsAFile = tempDir.resolve("report");
         Files.writeString(outputPathThatIsAFile, "not a directory");
@@ -834,5 +864,36 @@ final class AnalyzeCommandTest {
 
         assertEquals(1, exitCode);
         assertTrue(errorOutput.toString().contains("Failed to write analysis output"));
+    }
+
+    private JsonNode analyzeFixtureDirectory(String fixturePath, Path outputDirectory) throws Exception {
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(fixturePath, "--out", outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("SparkDoctor analyzed " + fixturePath));
+        assertTrue(output.toString().contains("Jobs: 1"));
+        assertTrue(output.toString().contains("Stages: 1"));
+        assertTrue(output.toString().contains("Tasks: 2"));
+        return objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+    }
+
+    private void assertSparkFourDirectoryFixture(JsonNode json, String applicationName, String applicationId) {
+        assertEquals(applicationName, json.path("application").path("name").asText());
+        assertEquals(applicationId, json.path("application").path("id").asText());
+        assertEquals(1, json.path("summary").path("jobs").asInt());
+        assertEquals(1, json.path("summary").path("jobsCompleted").asInt());
+        assertEquals(0, json.path("summary").path("jobsFailed").asInt());
+        assertEquals(1, json.path("summary").path("stages").asInt());
+        assertEquals(1, json.path("summary").path("stagesCompleted").asInt());
+        assertEquals(0, json.path("summary").path("stagesFailed").asInt());
+        assertEquals(2, json.path("summary").path("tasks").asInt());
+        assertEquals(0, json.path("summary").path("issuesDetected").asInt());
+        assertEquals(1, json.path("stages").size());
+        assertEquals(0, json.path("stages").get(0).path("id").asInt());
+        assertEquals(2, json.path("stages").get(0).path("completedTasks").asInt());
     }
 }
