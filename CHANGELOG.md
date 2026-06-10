@@ -4,6 +4,12 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+## 0.1.3 - 2026-06-09
+
+- Fixed Spark 4 event-log directory analysis for `eventlog_v2_*` application directories and parent event-log directories.
+- Documented the Spark 4 event-log directory layout and Graphviz commands for rendering SQL plan DOT files.
+- Improved SQL report readability with grouped operator counts, better DOT labels, and human-readable recommendation evidence values.
+
 ## 0.1.2 - 2026-06-07
 
 - Improved recommendation wording for spill pressure, shuffle partition skew, retry waste, oversized shuffle partitions, low shuffle parallelism, and failed stages.
