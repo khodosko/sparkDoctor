@@ -98,6 +98,13 @@ Open `sql-executions.md` when SQL executions are present and you want operator s
 
 Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present. DOT labels include Spark SQL operator names, DOT node IDs, shortened simple plan strings, and compact metric labels. Metric values are included when Spark exposes matching SQL accumulator values in the event log.
 
+To render a DOT graph as SVG with Graphviz:
+
+```bash
+dot -Tsvg sparkdoctor-report/sql-execution-0.dot -o sparkdoctor-report/sql-execution-0.svg
+open sparkdoctor-report/sql-execution-0.svg
+```
+
 Use `analysis.json` when you want the raw evidence:
 
 - look at `stages` for task duration, shuffle, and spill metrics
