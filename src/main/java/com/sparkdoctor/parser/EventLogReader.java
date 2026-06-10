@@ -35,13 +35,22 @@ public final class EventLogReader {
 
     private Stream<String> directoryLines(Path directory) throws IOException {
         List<Path> files;
-        try (var stream = Files.list(directory)) {
+        try (var stream = Files.walk(directory)) {
             files = stream.filter(Files::isRegularFile)
+                    .filter(this::isEventLogFile)
                     .sorted(Comparator.comparing(Path::toString))
                     .toList();
         }
 
         return files.stream().flatMap(this::uncheckedFileLines);
+    }
+
+    private boolean isEventLogFile(Path file) {
+        String fileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        return !fileName.startsWith(".")
+                && !fileName.endsWith(".crc")
+                && !fileName.startsWith("appstatus")
+                && !fileName.equals("_success");
     }
 
     private Stream<String> uncheckedFileLines(Path file) {

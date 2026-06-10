@@ -21,6 +21,17 @@ sparkdoctor analyze /tmp/spark-events/<application-event-log> --out ./sparkdocto
 
 Spark's event-log directory is controlled by `spark.eventLog.dir`, and rolling event logs may create an application directory instead of one flat file.
 
+Spark 4 can write event logs with a directory layout like this:
+
+```text
+/tmp/spark-events/
+  eventlog_v2_local-.../
+    events_1_local-...
+    appstatus_local-...
+```
+
+For this layout, SparkDoctor can analyze either the parent event-log directory or the `eventlog_v2_*` application directory. It reads the `events_*` stream files and ignores Spark status/helper files.
+
 Reference: [Apache Spark configuration](https://spark.apache.org/docs/latest/configuration.html).
 
 ## Spark History Server Directory

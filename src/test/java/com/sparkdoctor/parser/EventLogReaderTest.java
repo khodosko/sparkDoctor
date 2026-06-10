@@ -100,4 +100,29 @@ final class EventLogReaderTest {
 
         assertEquals(List.of("first", "second"), lines);
     }
+
+    @Test
+    void readsSparkFourEventLogApplicationDirectory() throws Exception {
+        Path applicationDirectory = tempDir.resolve("eventlog_v2_local-123");
+        Files.createDirectories(applicationDirectory);
+        Files.writeString(applicationDirectory.resolve("appstatus_local-123"), "status-should-be-ignored\n");
+        Files.writeString(applicationDirectory.resolve("events_1_local-123"), "event-first\nevent-second\n");
+
+        List<String> lines = reader.readLines(applicationDirectory);
+
+        assertEquals(List.of("event-first", "event-second"), lines);
+    }
+
+    @Test
+    void readsSparkFourEventLogParentDirectory() throws Exception {
+        Path eventLogRoot = tempDir.resolve("eventlog");
+        Path applicationDirectory = eventLogRoot.resolve("eventlog_v2_local-123");
+        Files.createDirectories(applicationDirectory);
+        Files.writeString(applicationDirectory.resolve("appstatus_local-123"), "status-should-be-ignored\n");
+        Files.writeString(applicationDirectory.resolve("events_1_local-123"), "event-first\nevent-second\n");
+
+        List<String> lines = reader.readLines(eventLogRoot);
+
+        assertEquals(List.of("event-first", "event-second"), lines);
+    }
 }
