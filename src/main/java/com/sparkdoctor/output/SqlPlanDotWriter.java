@@ -13,6 +13,7 @@ import java.util.Map;
 
 public final class SqlPlanDotWriter {
     private static final int MAX_METRICS_PER_NODE = 5;
+    private static final int MAX_SIMPLE_STRING_LENGTH = 120;
     private static final DecimalFormat WHOLE_NUMBER_FORMAT = new DecimalFormat("#,##0");
 
     public List<Path> write(Path outputDirectory, AnalysisReport report) throws IOException {
@@ -63,7 +64,7 @@ public final class SqlPlanDotWriter {
         dot.append("  ")
                 .append(nodeId)
                 .append(" [label=\"")
-                .append(escape(label(sparkPlanInfo, sqlMetricValues)))
+                .append(escape(label(nodeId, sparkPlanInfo, sqlMetricValues)))
                 .append("\"];\n");
 
         JsonNode children = sparkPlanInfo.get("children");
@@ -77,12 +78,12 @@ public final class SqlPlanDotWriter {
         return nodeId;
     }
 
-    private String label(JsonNode sparkPlanInfo, Map<Long, String> sqlMetricValues) {
+    private String label(String nodeId, JsonNode sparkPlanInfo, Map<Long, String> sqlMetricValues) {
         String nodeName = textOrUnknown(sparkPlanInfo, "nodeName");
         String simpleString = textOrNull(sparkPlanInfo, "simpleString");
-        StringBuilder label = new StringBuilder(nodeName);
+        StringBuilder label = new StringBuilder(nodeId).append("\n").append(nodeName);
         if (simpleString != null && !simpleString.equals(nodeName)) {
-            label.append("\n").append(simpleString);
+            label.append("\n").append(abbreviate(simpleString));
         }
 
         List<String> metricLabels = metricLabels(sparkPlanInfo, sqlMetricValues);
@@ -94,6 +95,14 @@ public final class SqlPlanDotWriter {
         }
 
         return label.toString();
+    }
+
+    private String abbreviate(String value) {
+        if (value.length() <= MAX_SIMPLE_STRING_LENGTH) {
+            return value;
+        }
+
+        return value.substring(0, MAX_SIMPLE_STRING_LENGTH - 3) + "...";
     }
 
     private List<String> metricLabels(JsonNode sparkPlanInfo, Map<Long, String> sqlMetricValues) {
@@ -115,7 +124,7 @@ public final class SqlPlanDotWriter {
         }
 
         if (metrics.size() > MAX_METRICS_PER_NODE) {
-            metricLabels.add("+" + (metrics.size() - MAX_METRICS_PER_NODE) + " more");
+            metricLabels.add("+" + (metrics.size() - MAX_METRICS_PER_NODE) + " more metrics");
         }
 
         return metricLabels;

@@ -1,6 +1,7 @@
 package com.sparkdoctor.output;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,7 +36,7 @@ final class SqlPlanDotWriterTest {
                       "children": [
                         {
                           "nodeName": "Exchange",
-                          "simpleString": "Exchange hashpartitioning(group_id, 4)",
+                          "simpleString": "Exchange hashpartitioning(group_id, 4), REPARTITION_BY_NUM, [plan_id=99], with a deliberately long label that should be shortened in the DOT graph output",
                           "metrics": [
                             {"name": "shuffle bytes written", "accumulatorId": 2, "metricType": "size"},
                             {"name": "shuffle records written", "accumulatorId": 3, "metricType": "sum"},
@@ -85,15 +86,20 @@ final class SqlPlanDotWriterTest {
         assertEquals(List.of(outputDirectory.resolve("sql-execution-7.dot")), dotPaths);
         String dot = Files.readString(dotPaths.get(0));
         assertTrue(dot.contains("digraph sql_execution_7"));
+        assertTrue(dot.contains("n0\\nAdaptiveSparkPlan"));
+        assertTrue(dot.contains("n1\\nExchange"));
         assertTrue(dot.contains("AdaptiveSparkPlan"));
         assertTrue(dot.contains("Exchange"));
+        assertTrue(dot.contains("Exchange hashpartitioning(group_id, 4), REPARTITION_BY_NUM, [plan_id=99]"));
+        assertTrue(dot.contains("..."));
+        assertFalse(dot.contains("with a deliberately long label that should be shortened in the DOT graph output"));
         assertTrue(dot.contains("metrics:\\n- duration: 29 ms"));
         assertTrue(dot.contains("- shuffle bytes written: 2 KiB"));
         assertTrue(dot.contains("- shuffle records written: 1,000"));
         assertTrue(dot.contains("- records read: 2,500"));
         assertTrue(dot.contains("- number of partitions: 4"));
         assertTrue(dot.contains("- fetch wait time: 12 ms"));
-        assertTrue(dot.contains("- +1 more"));
+        assertTrue(dot.contains("- +1 more metrics"));
         assertTrue(dot.contains("n0 -> n1"));
     }
 
