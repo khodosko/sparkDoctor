@@ -23,6 +23,8 @@ import com.sparkdoctor.model.FailedStage;
 import com.sparkdoctor.model.ParsedEventLog;
 import com.sparkdoctor.model.StageAnalysis;
 import com.sparkdoctor.model.SqlExecution;
+import com.sparkdoctor.model.SqlPlanMetric;
+import com.sparkdoctor.model.SqlPlanNode;
 import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -637,6 +639,40 @@ public final class SparkEventLogParser {
         }
     }
 
+    private SqlPlanNode planNode(JsonNode sparkPlanInfo) {
+        if (sparkPlanInfo == null || sparkPlanInfo.isNull()) {
+            return null;
+        }
+
+        List<SqlPlanMetric> metrics = new ArrayList<>();
+        JsonNode metricNodes = sparkPlanInfo.get("metrics");
+        if (metricNodes != null && metricNodes.isArray()) {
+            for (JsonNode metricNode : metricNodes) {
+                metrics.add(new SqlPlanMetric(
+                        textOrNull(metricNode, "name"),
+                        longOrNull(metricNode, "accumulatorId"),
+                        textOrNull(metricNode, "metricType")));
+            }
+        }
+
+        List<SqlPlanNode> children = new ArrayList<>();
+        JsonNode childNodes = sparkPlanInfo.get("children");
+        if (childNodes != null && childNodes.isArray()) {
+            for (JsonNode childNode : childNodes) {
+                SqlPlanNode child = planNode(childNode);
+                if (child != null) {
+                    children.add(child);
+                }
+            }
+        }
+
+        return new SqlPlanNode(
+                textOrNull(sparkPlanInfo, "nodeName"),
+                textOrNull(sparkPlanInfo, "simpleString"),
+                metrics,
+                children);
+    }
+
     private record TaskSpillMetrics(long memoryBytesSpilled, long diskBytesSpilled) {}
 
     private record TaskAttemptKey(int stageId, int stageAttemptId, long taskIndex) {}
@@ -728,6 +764,7 @@ public final class SparkEventLogParser {
         private SqlExecution toSqlExecution() {
             Long durationMillis =
                     startTimeMillis == null || endTimeMillis == null ? null : endTimeMillis - startTimeMillis;
+            JsonNode planForSummaries = latestSparkPlanInfo == null ? sparkPlanInfo : latestSparkPlanInfo;
             return new SqlExecution(
                     id,
                     rootExecutionId,
@@ -739,9 +776,11 @@ public final class SparkEventLogParser {
                     physicalPlanDescription,
                     latestPhysicalPlanDescription,
                     errorMessage,
-                    operatorSummaries(latestSparkPlanInfo == null ? sparkPlanInfo : latestSparkPlanInfo),
+                    operatorSummaries(planForSummaries),
                     sparkPlanInfo,
                     latestSparkPlanInfo,
+                    planNode(sparkPlanInfo),
+                    planNode(latestSparkPlanInfo),
                     sqlMetricValues);
         }
     }

@@ -1,6 +1,7 @@
 package com.sparkdoctor.output;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -158,6 +159,8 @@ final class AnalysisJsonWriterTest {
         assertEquals("Initial Plan", json.path("sqlExecutions").get(0).path("physicalPlanDescription").asText());
         assertEquals("Final Plan", json.path("sqlExecutions").get(0).path("latestPhysicalPlanDescription").asText());
         assertEquals(0, json.path("sqlExecutions").get(0).path("operatorSummaries").size());
+        assertFalse(json.path("sqlExecutions").get(0).has("planRoot"));
+        assertFalse(json.path("sqlExecutions").get(0).has("latestPlanRoot"));
         assertEquals(0, json.path("failedJobs").size());
         assertEquals(0, json.path("failedStages").size());
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());

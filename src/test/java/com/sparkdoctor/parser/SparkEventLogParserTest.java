@@ -53,8 +53,11 @@ final class SparkEventLogParserTest {
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart\","
                         + "\"executionId\":3,\"rootExecutionId\":3,\"description\":\"collect\","
                         + "\"details\":\"Dataset.collectToPython\",\"physicalPlanDescription\":\"Initial Plan\","
-                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\",\"children\":["
-                        + "{\"nodeName\":\"Exchange\",\"children\":["
+                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\","
+                        + "\"simpleString\":\"AdaptiveSparkPlan isFinalPlan=false\",\"children\":["
+                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(id, 4)\","
+                        + "\"metrics\":[{\"name\":\"shuffle bytes written\","
+                        + "\"accumulatorId\":44,\"metricType\":\"size\"}],\"children\":["
                         + "{\"nodeName\":\"Range\",\"children\":[]}]}]},"
                         + "\"time\":1000}",
                 "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7,\"Stage IDs\":[9],"
@@ -65,8 +68,11 @@ final class SparkEventLogParserTest {
                         + "\"Metadata\":\"sql\"}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate\","
                         + "\"executionId\":3,\"physicalPlanDescription\":\"Final Plan\","
-                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\",\"children\":["
-                        + "{\"nodeName\":\"Exchange\",\"children\":["
+                        + "\"sparkPlanInfo\":{\"nodeName\":\"AdaptiveSparkPlan\","
+                        + "\"simpleString\":\"AdaptiveSparkPlan isFinalPlan=true\",\"children\":["
+                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(id, 4)\","
+                        + "\"metrics\":[{\"name\":\"shuffle bytes written\","
+                        + "\"accumulatorId\":44,\"metricType\":\"size\"}],\"children\":["
                         + "{\"nodeName\":\"Project\",\"children\":["
                         + "{\"nodeName\":\"Range\",\"children\":[]}]}]}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates\","
@@ -89,6 +95,20 @@ final class SparkEventLogParserTest {
         assertEquals(1, parsedEventLog.sqlExecutions().get(0).operatorSummaries().get(0).count());
         assertTrue(parsedEventLog.sqlExecutions().get(0).operatorSummaries().stream()
                 .anyMatch(operator -> "Exchange".equals(operator.name()) && operator.count() == 1));
+        assertEquals("AdaptiveSparkPlan", parsedEventLog.sqlExecutions().get(0).planRoot().nodeName());
+        assertEquals("AdaptiveSparkPlan isFinalPlan=false", parsedEventLog.sqlExecutions().get(0).planRoot().simpleString());
+        assertEquals(3, parsedEventLog.sqlExecutions().get(0).planRoot().subtreeSize());
+        assertEquals(3, parsedEventLog.sqlExecutions().get(0).planRoot().maxDepth());
+        assertEquals(1, parsedEventLog.sqlExecutions().get(0).planRoot().countByName("Exchange"));
+        assertEquals("Exchange", parsedEventLog.sqlExecutions().get(0).planRoot().children().get(0).nodeName());
+        assertEquals(
+                "shuffle bytes written",
+                parsedEventLog.sqlExecutions().get(0).planRoot().children().get(0).metrics().get(0).name());
+        assertEquals(
+                44L,
+                parsedEventLog.sqlExecutions().get(0).planRoot().children().get(0).metrics().get(0).accumulatorId());
+        assertEquals("AdaptiveSparkPlan", parsedEventLog.sqlExecutions().get(0).latestPlanRoot().nodeName());
+        assertEquals(4, parsedEventLog.sqlExecutions().get(0).latestPlanRoot().subtreeSize());
         assertEquals("2048", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(44L));
         assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(55L));
     }

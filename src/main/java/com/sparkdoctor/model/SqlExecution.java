@@ -19,6 +19,8 @@ public record SqlExecution(
         List<SqlPlanOperatorSummary> operatorSummaries,
         @JsonIgnore JsonNode sparkPlanInfo,
         @JsonIgnore JsonNode latestSparkPlanInfo,
+        @JsonIgnore SqlPlanNode planRoot,
+        @JsonIgnore SqlPlanNode latestPlanRoot,
         @JsonIgnore Map<Long, String> sqlMetricValues) {
     public SqlExecution {
         operatorSummaries = operatorSummaries == null ? List.of() : List.copyOf(operatorSummaries);
@@ -48,6 +50,8 @@ public record SqlExecution(
                 latestPhysicalPlanDescription,
                 errorMessage,
                 List.of(),
+                null,
+                null,
                 null,
                 null,
                 Map.of());
@@ -80,6 +84,8 @@ public record SqlExecution(
                 List.of(),
                 sparkPlanInfo,
                 latestSparkPlanInfo,
+                null,
+                null,
                 Map.of());
     }
 
@@ -111,6 +117,42 @@ public record SqlExecution(
                 List.of(),
                 sparkPlanInfo,
                 latestSparkPlanInfo,
+                null,
+                null,
+                sqlMetricValues);
+    }
+
+    public SqlExecution(
+            long id,
+            Long rootExecutionId,
+            String description,
+            String details,
+            Long startTimeMillis,
+            Long endTimeMillis,
+            Long durationMillis,
+            String physicalPlanDescription,
+            String latestPhysicalPlanDescription,
+            String errorMessage,
+            List<SqlPlanOperatorSummary> operatorSummaries,
+            JsonNode sparkPlanInfo,
+            JsonNode latestSparkPlanInfo,
+            Map<Long, String> sqlMetricValues) {
+        this(
+                id,
+                rootExecutionId,
+                description,
+                details,
+                startTimeMillis,
+                endTimeMillis,
+                durationMillis,
+                physicalPlanDescription,
+                latestPhysicalPlanDescription,
+                errorMessage,
+                operatorSummaries,
+                sparkPlanInfo,
+                latestSparkPlanInfo,
+                null,
+                null,
                 sqlMetricValues);
     }
 
