@@ -1,6 +1,8 @@
 package com.sparkdoctor.output;
 
+import com.sparkdoctor.analysis.SqlPlanDuplicateSubtreeCollector;
 import com.sparkdoctor.model.AnalysisReport;
+import com.sparkdoctor.model.DuplicateSqlSubtree;
 import com.sparkdoctor.model.SqlExecution;
 import com.sparkdoctor.model.SqlPlanOperatorSummary;
 import java.io.IOException;
@@ -18,6 +20,15 @@ public final class SqlExecutionsMarkdownWriter {
             new OperatorCategory("Joins", operator -> operator.name().contains("Join")),
             new OperatorCategory("Scans", operator -> operator.name().contains("Scan")),
             new OperatorCategory("AQE nodes", operator -> isAqeOperator(operator.name())));
+    private final SqlPlanDuplicateSubtreeCollector duplicateSubtreeCollector;
+
+    public SqlExecutionsMarkdownWriter() {
+        this(new SqlPlanDuplicateSubtreeCollector());
+    }
+
+    SqlExecutionsMarkdownWriter(SqlPlanDuplicateSubtreeCollector duplicateSubtreeCollector) {
+        this.duplicateSubtreeCollector = duplicateSubtreeCollector;
+    }
 
     public Path write(Path outputDirectory, AnalysisReport report) throws IOException {
         Files.createDirectories(outputDirectory);
@@ -54,6 +65,7 @@ public final class SqlExecutionsMarkdownWriter {
             }
             markdown.append("\n");
             appendOperatorSummary(markdown, sqlExecution);
+            appendRepeatedSubtrees(markdown, sqlExecution);
             if (hasText(sqlExecution.details())) {
                 markdown.append("### Details\n\n");
                 markdown.append("```text\n");
@@ -89,6 +101,37 @@ public final class SqlExecutionsMarkdownWriter {
                     .append(": ")
                     .append(operator.count())
                     .append("\n");
+        }
+        markdown.append("\n");
+    }
+
+    private void appendRepeatedSubtrees(StringBuilder markdown, SqlExecution sqlExecution) {
+        if (sqlExecution.latestPlanRoot() == null) {
+            return;
+        }
+
+        List<DuplicateSqlSubtree> duplicates = duplicateSubtreeCollector.findDuplicates(sqlExecution.latestPlanRoot());
+        if (duplicates.isEmpty()) {
+            return;
+        }
+
+        markdown.append("### Repeated Subtrees\n\n");
+        for (DuplicateSqlSubtree duplicate : duplicates) {
+            markdown.append("- Root: ")
+                    .append(duplicate.rootNodeName())
+                    .append("; count=")
+                    .append(duplicate.count())
+                    .append("; subtreeSize=")
+                    .append(duplicate.subtreeSize())
+                    .append("; maxDepth=")
+                    .append(duplicate.maxDepth())
+                    .append("; contains=")
+                    .append(String.join(", ", duplicate.operatorNames()));
+            if (!duplicate.interestingOperators().isEmpty()) {
+                markdown.append("; interesting=")
+                        .append(String.join(", ", duplicate.interestingOperators()));
+            }
+            markdown.append("\n");
         }
         markdown.append("\n");
     }
