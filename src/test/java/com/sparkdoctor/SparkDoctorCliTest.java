@@ -45,4 +45,16 @@ final class SparkDoctorCliTest {
         assertTrue(output.toString().contains("--out"));
         assertTrue(output.toString().contains("<report-directory>"));
     }
+
+    @Test
+    void helpShowsCurrentCliVersion() {
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new SparkDoctorCli());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute("--version");
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("sparkDoctor 0.1.3"));
+    }
 }

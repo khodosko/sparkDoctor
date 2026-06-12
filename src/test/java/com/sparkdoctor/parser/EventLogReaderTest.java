@@ -1,8 +1,10 @@
 package com.sparkdoctor.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.github.luben.zstd.ZstdOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -124,5 +126,35 @@ final class EventLogReaderTest {
         List<String> lines = reader.readLines(eventLogRoot);
 
         assertEquals(List.of("event-first", "event-second"), lines);
+    }
+
+    @Test
+    void rejectsParentDirectoryContainingMultipleApplicationDirectories() throws Exception {
+        Path eventLogRoot = tempDir.resolve("eventlog");
+        Path firstApplicationDirectory = eventLogRoot.resolve("eventlog_v2_local-123");
+        Path secondApplicationDirectory = eventLogRoot.resolve("eventlog_v2_local-456");
+        Files.createDirectories(firstApplicationDirectory);
+        Files.createDirectories(secondApplicationDirectory);
+        Files.writeString(firstApplicationDirectory.resolve("events_1_local-123"), "event-first\n");
+        Files.writeString(secondApplicationDirectory.resolve("events_1_local-456"), "event-second\n");
+
+        IOException exception = assertThrows(IOException.class, () -> reader.readLines(eventLogRoot));
+
+        assertEquals(
+                "Event log directory contains multiple Spark application logs. Point SparkDoctor at one application directory or event log file.",
+                exception.getMessage());
+    }
+
+    @Test
+    void readsRollingEventLogPartsInNumericOrder() throws Exception {
+        Path applicationDirectory = tempDir.resolve("eventlog_v2_local-123");
+        Files.createDirectories(applicationDirectory);
+        Files.writeString(applicationDirectory.resolve("events_10_local-123"), "tenth\n");
+        Files.writeString(applicationDirectory.resolve("events_2_local-123"), "second\n");
+        Files.writeString(applicationDirectory.resolve("events_1_local-123"), "first\n");
+
+        List<String> lines = reader.readLines(applicationDirectory);
+
+        assertEquals(List.of("first", "second", "tenth"), lines);
     }
 }

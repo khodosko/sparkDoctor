@@ -275,6 +275,40 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void usesLatestStageAttemptMetricsWhenStageIsRetried() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                taskEndAttempt(4, 0, 100, 0, true, 0, 9000, 9000, 900, 90, 0),
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1,\"Failure Reason\":\"Fetch failed\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                taskEndAttempt(4, 1, 101, 0, true, 0, 1000, 1000, 100, 10, 0),
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}"));
+
+        assertEquals(1, parsedEventLog.analysisSummary().stages());
+        assertEquals(1, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(0, parsedEventLog.analysisSummary().stagesFailed());
+        assertEquals(1, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(1, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(1000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(1000L, parsedEventLog.stages().get(0).avgTaskDurationMillis());
+        assertEquals(1000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(List.of(1000L), parsedEventLog.stages().get(0).taskShuffleReadBytes());
+        assertEquals(100L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(10L, parsedEventLog.stages().get(0).diskBytesSpilled());
+        assertEquals(0, parsedEventLog.failedStages().size());
+    }
+
+    @Test
     void detectsTaskDurationSkewFromParsedTaskEvents() throws Exception {
         ParsedEventLog parsedEventLog = parser.parse(List.of(
                 "{\"Event\":\"SparkListenerStageSubmitted\","

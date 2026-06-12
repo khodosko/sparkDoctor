@@ -76,6 +76,30 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeRejectsAmbiguousMultiApplicationDirectory() throws Exception {
+        Path eventLogRoot = tempDir.resolve("eventlog-root");
+        Path firstApplicationDirectory = eventLogRoot.resolve("eventlog_v2_local-123");
+        Path secondApplicationDirectory = eventLogRoot.resolve("eventlog_v2_local-456");
+        Files.createDirectories(firstApplicationDirectory);
+        Files.createDirectories(secondApplicationDirectory);
+        Files.writeString(firstApplicationDirectory.resolve("events_1_local-123"), """
+                {"Event":"SparkListenerApplicationStart","App Name":"first","App ID":"app-first","Timestamp":1}
+                """);
+        Files.writeString(secondApplicationDirectory.resolve("events_1_local-456"), """
+                {"Event":"SparkListenerApplicationStart","App Name":"second","App ID":"app-second","Timestamp":2}
+                """);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLogRoot.toString(), "--out", tempDir.resolve("report").toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("multiple Spark application logs"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+    }
+
+    @Test
     void analyzePrintsParsedApplicationSummary() {
         StringWriter output = new StringWriter();
         CommandLine commandLine = new CommandLine(new AnalyzeCommand());
