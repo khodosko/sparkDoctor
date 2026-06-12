@@ -36,6 +36,8 @@ public final class RecommendationEngine {
                 recommendations.add(hostImbalanceRecommendation(bottleneck));
             } else if ("sql_many_exchanges".equals(bottleneck.type())) {
                 recommendations.add(sqlManyExchangesRecommendation(bottleneck));
+            } else if ("duplicate_sql_subtree".equals(bottleneck.type())) {
+                recommendations.add(duplicateSqlSubtreeRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -215,6 +217,21 @@ public final class RecommendationEngine {
                         + "Exchange operators usually indicate shuffle boundaries. Review joins, aggregations, "
                         + "sorts, repartition calls, and whether filters or projections can reduce data before "
                         + "wide operations.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation duplicateSqlSubtreeRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-duplicate-sql-subtrees",
+                bottleneck.severity(),
+                "Investigate repeated SQL plan subtrees",
+                "SparkDoctor found repeated physical plan fragments in SQL execution %s. "
+                        .formatted(bottleneck.evidence().get("sqlExecutionId"))
+                        + "This may indicate duplicated work, missing reuse, or an opportunity to "
+                        + "cache/materialize an intermediate result. Event logs only expose physical plans, "
+                        + "so optimizer/analyzer context may be missing. Validate in Spark UI or query code "
+                        + "before changing logic.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

@@ -329,6 +329,37 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForDuplicateSqlSubtrees() {
+        Bottleneck bottleneck = new Bottleneck(
+                "duplicate_sql_subtree",
+                "medium",
+                -1,
+                "SQL execution 3 has repeated physical plan subtrees.",
+                Map.of(
+                        "sqlExecutionId", 3L,
+                        "duplicateGroups", 3,
+                        "topDuplicateRoot", "Exchange",
+                        "topDuplicateCount", 2,
+                        "topDuplicateSubtreeSize", 5,
+                        "topDuplicateInterestingOperators", List.of("Exchange", "HashAggregate")));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-duplicate-sql-subtrees", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate repeated SQL plan subtrees", recommendation.title());
+        assertEquals("duplicate_sql_subtree", recommendation.relatedBottleneckType());
+        assertEquals(-1, recommendation.stageId());
+        assertTrue(recommendation.description().contains("repeated physical plan fragments"));
+        assertTrue(recommendation.description().contains("missing reuse"));
+        assertTrue(recommendation.description().contains("cache/materialize"));
+        assertTrue(recommendation.description().contains("physical plans"));
+        assertTrue(recommendation.description().contains("Spark UI or query code"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",
