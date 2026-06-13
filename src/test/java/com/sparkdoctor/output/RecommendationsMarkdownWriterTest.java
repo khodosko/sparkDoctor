@@ -154,6 +154,46 @@ final class RecommendationsMarkdownWriterTest {
     }
 
     @Test
+    void rendersPossibleMissedExchangeReuseConfidenceEvidence() throws Exception {
+        AnalysisReport report = AnalysisReport.from(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 0, 1, 0, 0, 0, 0, 1),
+                List.of(),
+                List.of(new Bottleneck(
+                        "possible_missed_exchange_reuse",
+                        "medium",
+                        -1,
+                        "SQL execution 3 has repeated exchange-like physical plan subtrees.",
+                        Map.of(
+                                "sqlExecutionId", 3L,
+                                "duplicateExchangeGroups", 1,
+                                "topDuplicateRoot", "Exchange",
+                                "topDuplicateCount", 2,
+                                "topDuplicateSubtreeSize", 5,
+                                "topDuplicateMaxDepth", 4,
+                                "topDuplicateInterestingOperators", List.of("Exchange", "HashAggregate"),
+                                "confidence", "low",
+                                "confidenceReason", "physical-plan-only signal",
+                                "validationRequired", "Validate in Spark UI and query code."))),
+                List.of(new Recommendation(
+                        "investigate-possible-missed-exchange-reuse",
+                        "medium",
+                        "Investigate possible missed exchange reuse",
+                        "SQL execution 3 has repeated exchange-like physical plan subtrees.",
+                        "possible_missed_exchange_reuse",
+                        -1)));
+        Path outputDirectory = tempDir.resolve("possible-exchange-reuse-report");
+
+        Path recommendationsPath = writer.write(outputDirectory, report);
+
+        String markdown = Files.readString(recommendationsPath);
+        assertTrue(markdown.contains("- confidence: low"));
+        assertTrue(markdown.contains("- confidenceReason: physical-plan-only signal"));
+        assertTrue(markdown.contains("- validationRequired: Validate in Spark UI and query code."));
+        assertTrue(markdown.contains("- topDuplicateInterestingOperators: Exchange, HashAggregate"));
+    }
+
+    @Test
     void writesFailedStagesFirstInStageHotspots() throws Exception {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),

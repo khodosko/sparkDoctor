@@ -4,6 +4,9 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+- Suppressed broad duplicate SQL subtree findings when the same SQL execution already has a more specific possible missed exchange reuse finding.
+- Added explicit confidence and validation evidence for possible missed exchange reuse findings.
+
 ## 0.1.4 - 2026-06-12
 
 - Added repeated SQL physical plan subtree detection to flag duplicated plan fragments that may indicate duplicated work, cache opportunities, or missed reuse.

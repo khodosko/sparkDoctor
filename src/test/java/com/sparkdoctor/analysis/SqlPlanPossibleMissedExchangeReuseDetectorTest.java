@@ -130,6 +130,11 @@ final class SqlPlanPossibleMissedExchangeReuseDetectorTest {
         assertEquals(3, bottleneck.evidence().get("topDuplicateSubtreeSize"));
         assertEquals(3, bottleneck.evidence().get("topDuplicateMaxDepth"));
         assertEquals(List.of("Exchange", "HashAggregate"), bottleneck.evidence().get("topDuplicateInterestingOperators"));
+        assertEquals("low", bottleneck.evidence().get("confidence"));
+        assertEquals("physical-plan-only signal", bottleneck.evidence().get("confidenceReason"));
+        assertEquals(
+                "Validate in Spark UI and query code before making optimizer conclusions.",
+                bottleneck.evidence().get("validationRequired"));
     }
 
     private SqlExecution sqlExecutionWithLatestPlan(SqlPlanNode latestPlanRoot) {

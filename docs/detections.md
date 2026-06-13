@@ -353,6 +353,9 @@ topDuplicateRoot = Exchange
 topDuplicateCount = 2
 topDuplicateSubtreeSize = 3
 topDuplicateInterestingOperators = [Exchange, HashAggregate]
+confidence = low
+confidenceReason = physical-plan-only signal
+validationRequired = Validate in Spark UI and query code before making optimizer conclusions.
 severity = medium
 ```
 

@@ -54,6 +54,9 @@ public final class SqlPlanPossibleMissedExchangeReuseDetector {
             evidence.put("topDuplicateSubtreeSize", topDuplicate.subtreeSize());
             evidence.put("topDuplicateMaxDepth", topDuplicate.maxDepth());
             evidence.put("topDuplicateInterestingOperators", List.copyOf(topDuplicate.interestingOperators()));
+            evidence.put("confidence", "low");
+            evidence.put("confidenceReason", "physical-plan-only signal");
+            evidence.put("validationRequired", "Validate in Spark UI and query code before making optimizer conclusions.");
 
             bottlenecks.add(new Bottleneck(
                     "possible_missed_exchange_reuse",

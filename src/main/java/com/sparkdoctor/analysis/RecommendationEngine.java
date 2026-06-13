@@ -246,7 +246,7 @@ public final class RecommendationEngine {
                 "SQL execution %s has repeated exchange-like physical plan subtrees. "
                         .formatted(bottleneck.evidence().get("sqlExecutionId"))
                         + "This may indicate missed exchange reuse or another repeated shuffle-heavy pattern. "
-                        + "Spark event logs contain the physical plan, so analyzer and optimizer context may be "
+                        + "Confidence is low because Spark event logs contain the physical plan, so analyzer and optimizer context may be "
                         + "missing. Validate in Spark UI and query code before making caching, query-shape, or "
                         + "optimizer conclusions.",
                 bottleneck.type(),

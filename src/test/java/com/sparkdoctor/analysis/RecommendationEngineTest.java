@@ -387,6 +387,7 @@ final class RecommendationEngineTest {
         assertTrue(recommendation.description().contains("SQL execution 3 has repeated exchange-like physical plan subtrees"));
         assertTrue(recommendation.description().contains("missed exchange reuse"));
         assertTrue(recommendation.description().contains("repeated shuffle-heavy pattern"));
+        assertTrue(recommendation.description().contains("Confidence is low"));
         assertTrue(recommendation.description().contains("Spark event logs contain the physical plan"));
         assertTrue(recommendation.description().contains("analyzer and optimizer context may be missing"));
         assertTrue(recommendation.description().contains("Spark UI and query code"));
