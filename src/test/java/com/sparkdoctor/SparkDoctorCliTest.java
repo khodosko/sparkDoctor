@@ -55,6 +55,6 @@ final class SparkDoctorCliTest {
         int exitCode = commandLine.execute("--version");
 
         assertEquals(0, exitCode);
-        assertTrue(output.toString().contains("sparkDoctor 0.1.3"));
+        assertTrue(output.toString().contains("sparkDoctor 0.1.4"));
     }
 }

@@ -4,6 +4,12 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+## 0.1.4 - 2026-06-12
+
+- Added repeated SQL physical plan subtree detection to flag duplicated plan fragments that may indicate duplicated work, cache opportunities, or missed reuse.
+- Added possible missed exchange reuse detection for repeated exchange-like SQL plan subtrees.
+- Documented SQL subtree diagnostics, evidence fields, and repeated-subtree output in `sql-executions.md`.
+
 ## 0.1.3 - 2026-06-09
 
 - Fixed Spark 4 event-log directory analysis for `eventlog_v2_*` application directories and parent event-log directories.
