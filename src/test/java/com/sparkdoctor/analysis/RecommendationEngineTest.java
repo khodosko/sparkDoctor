@@ -352,11 +352,12 @@ final class RecommendationEngineTest {
         assertEquals("Investigate repeated SQL plan subtrees", recommendation.title());
         assertEquals("duplicate_sql_subtree", recommendation.relatedBottleneckType());
         assertEquals(-1, recommendation.stageId());
-        assertTrue(recommendation.description().contains("repeated physical plan fragments"));
-        assertTrue(recommendation.description().contains("missing reuse"));
-        assertTrue(recommendation.description().contains("cache/materialize"));
-        assertTrue(recommendation.description().contains("physical plans"));
-        assertTrue(recommendation.description().contains("Spark UI or query code"));
+        assertTrue(recommendation.description().contains("SQL execution 3 has repeated physical plan subtrees"));
+        assertTrue(recommendation.description().contains("duplicated work"));
+        assertTrue(recommendation.description().contains("missed reuse"));
+        assertTrue(recommendation.description().contains("cache or materialize"));
+        assertTrue(recommendation.description().contains("Spark event logs contain the physical plan"));
+        assertTrue(recommendation.description().contains("Spark UI before making optimizer or caching changes"));
     }
 
     @Test

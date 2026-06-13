@@ -116,6 +116,44 @@ final class RecommendationsMarkdownWriterTest {
     }
 
     @Test
+    void rendersDuplicateSqlSubtreeEvidenceListsCleanly() throws Exception {
+        AnalysisReport report = AnalysisReport.from(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(1, 0, 1, 0, 0, 0, 0, 1),
+                List.of(),
+                List.of(new Bottleneck(
+                        "duplicate_sql_subtree",
+                        "medium",
+                        -1,
+                        "SQL execution 3 has repeated physical plan subtrees.",
+                        Map.of(
+                                "sqlExecutionId", 3L,
+                                "duplicateGroups", 2,
+                                "topDuplicateRoot", "Exchange",
+                                "topDuplicateCount", 2,
+                                "topDuplicateSubtreeSize", 5,
+                                "topDuplicateMaxDepth", 4,
+                                "topDuplicateInterestingOperators", List.of("Exchange", "HashAggregate")))),
+                List.of(new Recommendation(
+                        "investigate-duplicate-sql-subtrees",
+                        "medium",
+                        "Investigate repeated SQL plan subtrees",
+                        "SQL execution 3 has repeated physical plan subtrees.",
+                        "duplicate_sql_subtree",
+                        -1)));
+        Path outputDirectory = tempDir.resolve("duplicate-subtree-report");
+
+        Path recommendationsPath = writer.write(outputDirectory, report);
+
+        String markdown = Files.readString(recommendationsPath);
+        assertTrue(markdown.contains("- Scope: application"));
+        assertTrue(markdown.contains("- duplicateGroups: 2"));
+        assertTrue(markdown.contains("- sqlExecutionId: 3"));
+        assertTrue(markdown.contains("- topDuplicateInterestingOperators: Exchange, HashAggregate"));
+        assertTrue(!markdown.contains("- topDuplicateInterestingOperators: [Exchange, HashAggregate]"));
+    }
+
+    @Test
     void writesFailedStagesFirstInStageHotspots() throws Exception {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),

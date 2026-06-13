@@ -226,12 +226,12 @@ public final class RecommendationEngine {
                 "investigate-duplicate-sql-subtrees",
                 bottleneck.severity(),
                 "Investigate repeated SQL plan subtrees",
-                "SparkDoctor found repeated physical plan fragments in SQL execution %s. "
+                "SQL execution %s has repeated physical plan subtrees. "
                         .formatted(bottleneck.evidence().get("sqlExecutionId"))
-                        + "This may indicate duplicated work, missing reuse, or an opportunity to "
-                        + "cache/materialize an intermediate result. Event logs only expose physical plans, "
-                        + "so optimizer/analyzer context may be missing. Validate in Spark UI or query code "
-                        + "before changing logic.",
+                        + "This can indicate duplicated work, missed reuse, or an opportunity to cache or "
+                        + "materialize a shared intermediate result. Spark event logs contain the physical "
+                        + "plan, so validate the query logic and Spark UI before making optimizer or caching "
+                        + "changes.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }

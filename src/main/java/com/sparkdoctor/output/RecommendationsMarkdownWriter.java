@@ -8,6 +8,7 @@ import com.sparkdoctor.util.HumanReadableFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -179,6 +180,11 @@ public final class RecommendationsMarkdownWriter {
     private String displayEvidence(String key, Object value) {
         if (value == null) {
             return "null";
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
         }
         if (value instanceof Number number) {
             long longValue = number.longValue();
