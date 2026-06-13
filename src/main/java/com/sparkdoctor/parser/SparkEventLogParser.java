@@ -357,8 +357,14 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(speculationDetector.detect(stageAnalyses));
         bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));
         bottlenecks.addAll(sqlPlanExchangeDetector.detect(sqlExecutionAnalyses));
-        bottlenecks.addAll(sqlPlanDuplicateSubtreeDetector.detect(sqlExecutionAnalyses));
-        bottlenecks.addAll(sqlPlanPossibleMissedExchangeReuseDetector.detect(sqlExecutionAnalyses));
+        List<Bottleneck> possibleMissedExchangeReuseBottlenecks =
+                sqlPlanPossibleMissedExchangeReuseDetector.detect(sqlExecutionAnalyses);
+        Set<Long> sqlExecutionsWithPossibleMissedExchangeReuse =
+                sqlExecutionIds(possibleMissedExchangeReuseBottlenecks, "possible_missed_exchange_reuse");
+        bottlenecks.addAll(sqlPlanDuplicateSubtreeDetector.detect(sqlExecutionAnalyses).stream()
+                .filter(bottleneck -> !hasSqlExecutionId(bottleneck, sqlExecutionsWithPossibleMissedExchangeReuse))
+                .toList());
+        bottlenecks.addAll(possibleMissedExchangeReuseBottlenecks);
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
@@ -394,6 +400,26 @@ public final class SparkEventLogParser {
             Map<StageKey, StageAccumulator> stageAttempts, Map<Integer, Integer> latestStageAttemptIds, int stageId) {
         int latestStageAttemptId = latestStageAttemptIds.getOrDefault(stageId, 0);
         return stageAttempts.computeIfAbsent(new StageKey(stageId, latestStageAttemptId), key -> new StageAccumulator(key.stageId()));
+    }
+
+    private Set<Long> sqlExecutionIds(List<Bottleneck> bottlenecks, String bottleneckType) {
+        Set<Long> sqlExecutionIds = new HashSet<>();
+        for (Bottleneck bottleneck : bottlenecks) {
+            if (!bottleneckType.equals(bottleneck.type())) {
+                continue;
+            }
+            Object sqlExecutionId = bottleneck.evidence().get("sqlExecutionId");
+            if (sqlExecutionId instanceof Number numericSqlExecutionId) {
+                sqlExecutionIds.add(numericSqlExecutionId.longValue());
+            }
+        }
+        return sqlExecutionIds;
+    }
+
+    private boolean hasSqlExecutionId(Bottleneck bottleneck, Set<Long> sqlExecutionIds) {
+        Object sqlExecutionId = bottleneck.evidence().get("sqlExecutionId");
+        return sqlExecutionId instanceof Number numericSqlExecutionId
+                && sqlExecutionIds.contains(numericSqlExecutionId.longValue());
     }
 
     private boolean isSqlEvent(String eventType, String sqlEventType) {

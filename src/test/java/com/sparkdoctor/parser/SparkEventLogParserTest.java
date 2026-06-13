@@ -798,31 +798,31 @@ final class SparkEventLogParserTest {
                         + "\"executionId\":12,\"rootExecutionId\":12,\"description\":\"collect\","
                         + "\"details\":\"Dataset.collectToPython\",\"physicalPlanDescription\":\"Initial Plan\","
                         + "\"sparkPlanInfo\":{\"nodeName\":\"Union\",\"simpleString\":\"Union\",\"children\":["
-                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(group_id#1L, 4), [plan_id=18]\","
-                        + "\"children\":[{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id : 2]\","
+                        + "{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id : 2]\","
+                        + "\"children\":[{\"nodeName\":\"Project\",\"simpleString\":\"Project [group_id#1L]\","
                         + "\"children\":[{\"nodeName\":\"Range\",\"simpleString\":\"Range (0, 1000, step=1, splits=8)\",\"children\":[]}]}]},"
-                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(group_id#99L, 4), [plan_id=67]\","
-                        + "\"children\":[{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id: 9]\","
+                        + "{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id: 9]\","
+                        + "\"children\":[{\"nodeName\":\"Project\",\"simpleString\":\"Project [group_id#99L]\","
                         + "\"children\":[{\"nodeName\":\"Range\",\"simpleString\":\"Range (0, 1000, step=1, splits=8)\",\"children\":[]}]}]}]},"
                         + "\"time\":1000}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate\","
                         + "\"executionId\":12,\"physicalPlanDescription\":\"Final Plan\","
                         + "\"sparkPlanInfo\":{\"nodeName\":\"Union\",\"simpleString\":\"Union\",\"children\":["
-                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(group_id#1L, 4), [plan_id=18]\","
-                        + "\"children\":[{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id : 2]\","
+                        + "{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id : 2]\","
+                        + "\"children\":[{\"nodeName\":\"Project\",\"simpleString\":\"Project [group_id#1L]\","
                         + "\"children\":[{\"nodeName\":\"Range\",\"simpleString\":\"Range (0, 1000, step=1, splits=8)\",\"children\":[]}]}]},"
-                        + "{\"nodeName\":\"Exchange\",\"simpleString\":\"Exchange hashpartitioning(group_id#99L, 4), [plan_id=67]\","
-                        + "\"children\":[{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id: 9]\","
+                        + "{\"nodeName\":\"HashAggregate\",\"simpleString\":\"HashAggregate [codegen id: 9]\","
+                        + "\"children\":[{\"nodeName\":\"Project\",\"simpleString\":\"Project [group_id#99L]\","
                         + "\"children\":[{\"nodeName\":\"Range\",\"simpleString\":\"Range (0, 1000, step=1, splits=8)\",\"children\":[]}]}]}]}}",
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd\","
                         + "\"executionId\":12,\"time\":1750,\"errorMessage\":\"\"}"));
 
-        assertEquals(2, parsedEventLog.bottlenecks().size());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
         assertEquals("duplicate_sql_subtree", parsedEventLog.bottlenecks().get(0).type());
         assertEquals(12L, parsedEventLog.bottlenecks().get(0).evidence().get("sqlExecutionId"));
         assertEquals(1, parsedEventLog.bottlenecks().get(0).evidence().get("duplicateGroups"));
-        assertEquals("Exchange", parsedEventLog.bottlenecks().get(0).evidence().get("topDuplicateRoot"));
-        assertEquals(2, parsedEventLog.recommendations().size());
+        assertEquals("HashAggregate", parsedEventLog.bottlenecks().get(0).evidence().get("topDuplicateRoot"));
+        assertEquals(1, parsedEventLog.recommendations().size());
         assertEquals("investigate-duplicate-sql-subtrees", parsedEventLog.recommendations().get(0).id());
     }
 
@@ -852,15 +852,13 @@ final class SparkEventLogParserTest {
                 "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd\","
                         + "\"executionId\":12,\"time\":1750,\"errorMessage\":\"\"}"));
 
-        assertEquals(2, parsedEventLog.bottlenecks().size());
-        assertEquals("duplicate_sql_subtree", parsedEventLog.bottlenecks().get(0).type());
-        assertEquals("possible_missed_exchange_reuse", parsedEventLog.bottlenecks().get(1).type());
-        assertEquals(12L, parsedEventLog.bottlenecks().get(1).evidence().get("sqlExecutionId"));
-        assertEquals(1, parsedEventLog.bottlenecks().get(1).evidence().get("duplicateExchangeGroups"));
-        assertEquals("Exchange", parsedEventLog.bottlenecks().get(1).evidence().get("topDuplicateRoot"));
-        assertEquals(2, parsedEventLog.recommendations().size());
-        assertEquals("investigate-duplicate-sql-subtrees", parsedEventLog.recommendations().get(0).id());
-        assertEquals("investigate-possible-missed-exchange-reuse", parsedEventLog.recommendations().get(1).id());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("possible_missed_exchange_reuse", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals(12L, parsedEventLog.bottlenecks().get(0).evidence().get("sqlExecutionId"));
+        assertEquals(1, parsedEventLog.bottlenecks().get(0).evidence().get("duplicateExchangeGroups"));
+        assertEquals("Exchange", parsedEventLog.bottlenecks().get(0).evidence().get("topDuplicateRoot"));
+        assertEquals(1, parsedEventLog.recommendations().size());
+        assertEquals("investigate-possible-missed-exchange-reuse", parsedEventLog.recommendations().get(0).id());
     }
 
     @Test
