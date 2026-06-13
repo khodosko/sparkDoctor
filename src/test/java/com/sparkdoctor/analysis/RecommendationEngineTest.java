@@ -361,6 +361,38 @@ final class RecommendationEngineTest {
     }
 
     @Test
+    void recommendsInvestigationForPossibleMissedExchangeReuse() {
+        Bottleneck bottleneck = new Bottleneck(
+                "possible_missed_exchange_reuse",
+                "medium",
+                -1,
+                "SQL execution 3 has repeated exchange-like physical plan subtrees.",
+                Map.of(
+                        "sqlExecutionId", 3L,
+                        "duplicateExchangeGroups", 2,
+                        "topDuplicateRoot", "Exchange",
+                        "topDuplicateCount", 2,
+                        "topDuplicateSubtreeSize", 5,
+                        "topDuplicateInterestingOperators", List.of("Exchange", "HashAggregate")));
+
+        List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
+
+        assertEquals(1, recommendations.size());
+        Recommendation recommendation = recommendations.get(0);
+        assertEquals("investigate-possible-missed-exchange-reuse", recommendation.id());
+        assertEquals("medium", recommendation.severity());
+        assertEquals("Investigate possible missed exchange reuse", recommendation.title());
+        assertEquals("possible_missed_exchange_reuse", recommendation.relatedBottleneckType());
+        assertEquals(-1, recommendation.stageId());
+        assertTrue(recommendation.description().contains("SQL execution 3 has repeated exchange-like physical plan subtrees"));
+        assertTrue(recommendation.description().contains("missed exchange reuse"));
+        assertTrue(recommendation.description().contains("repeated shuffle-heavy pattern"));
+        assertTrue(recommendation.description().contains("Spark event logs contain the physical plan"));
+        assertTrue(recommendation.description().contains("analyzer and optimizer context may be missing"));
+        assertTrue(recommendation.description().contains("Spark UI and query code"));
+    }
+
+    @Test
     void recommendsInvestigationForFailedJob() {
         Bottleneck bottleneck = new Bottleneck(
                 "failed_job",

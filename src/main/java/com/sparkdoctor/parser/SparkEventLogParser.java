@@ -12,6 +12,7 @@ import com.sparkdoctor.analysis.SpillPressureDetector;
 import com.sparkdoctor.analysis.SpillSkewDetector;
 import com.sparkdoctor.analysis.SqlPlanDuplicateSubtreeDetector;
 import com.sparkdoctor.analysis.SqlPlanExchangeDetector;
+import com.sparkdoctor.analysis.SqlPlanPossibleMissedExchangeReuseDetector;
 import com.sparkdoctor.analysis.SpeculationDetector;
 import com.sparkdoctor.analysis.TaskDurationSkewDetector;
 import com.sparkdoctor.analysis.TinyTaskDetector;
@@ -67,6 +68,7 @@ public final class SparkEventLogParser {
     private final WorkerImbalanceDetector workerImbalanceDetector;
     private final SqlPlanExchangeDetector sqlPlanExchangeDetector;
     private final SqlPlanDuplicateSubtreeDetector sqlPlanDuplicateSubtreeDetector;
+    private final SqlPlanPossibleMissedExchangeReuseDetector sqlPlanPossibleMissedExchangeReuseDetector;
     private final FailureDetector failureDetector;
     private final RecommendationEngine recommendationEngine;
 
@@ -86,6 +88,7 @@ public final class SparkEventLogParser {
                 new WorkerImbalanceDetector(),
                 new SqlPlanExchangeDetector(),
                 new SqlPlanDuplicateSubtreeDetector(),
+                new SqlPlanPossibleMissedExchangeReuseDetector(),
                 new FailureDetector(),
                 new RecommendationEngine());
     }
@@ -105,6 +108,7 @@ public final class SparkEventLogParser {
             WorkerImbalanceDetector workerImbalanceDetector,
             SqlPlanExchangeDetector sqlPlanExchangeDetector,
             SqlPlanDuplicateSubtreeDetector sqlPlanDuplicateSubtreeDetector,
+            SqlPlanPossibleMissedExchangeReuseDetector sqlPlanPossibleMissedExchangeReuseDetector,
             FailureDetector failureDetector,
             RecommendationEngine recommendationEngine) {
         this.eventLogReader = eventLogReader;
@@ -121,6 +125,7 @@ public final class SparkEventLogParser {
         this.workerImbalanceDetector = workerImbalanceDetector;
         this.sqlPlanExchangeDetector = sqlPlanExchangeDetector;
         this.sqlPlanDuplicateSubtreeDetector = sqlPlanDuplicateSubtreeDetector;
+        this.sqlPlanPossibleMissedExchangeReuseDetector = sqlPlanPossibleMissedExchangeReuseDetector;
         this.failureDetector = failureDetector;
         this.recommendationEngine = recommendationEngine;
     }
@@ -353,6 +358,7 @@ public final class SparkEventLogParser {
         bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));
         bottlenecks.addAll(sqlPlanExchangeDetector.detect(sqlExecutionAnalyses));
         bottlenecks.addAll(sqlPlanDuplicateSubtreeDetector.detect(sqlExecutionAnalyses));
+        bottlenecks.addAll(sqlPlanPossibleMissedExchangeReuseDetector.detect(sqlExecutionAnalyses));
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));

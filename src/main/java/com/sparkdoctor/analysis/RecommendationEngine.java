@@ -38,6 +38,8 @@ public final class RecommendationEngine {
                 recommendations.add(sqlManyExchangesRecommendation(bottleneck));
             } else if ("duplicate_sql_subtree".equals(bottleneck.type())) {
                 recommendations.add(duplicateSqlSubtreeRecommendation(bottleneck));
+            } else if ("possible_missed_exchange_reuse".equals(bottleneck.type())) {
+                recommendations.add(possibleMissedExchangeReuseRecommendation(bottleneck));
             } else if ("failed_job".equals(bottleneck.type())) {
                 recommendations.add(failedJobRecommendation(bottleneck));
             } else if ("failed_stage".equals(bottleneck.type())) {
@@ -232,6 +234,21 @@ public final class RecommendationEngine {
                         + "materialize a shared intermediate result. Spark event logs contain the physical "
                         + "plan, so validate the query logic and Spark UI before making optimizer or caching "
                         + "changes.",
+                bottleneck.type(),
+                bottleneck.stageId());
+    }
+
+    private Recommendation possibleMissedExchangeReuseRecommendation(Bottleneck bottleneck) {
+        return new Recommendation(
+                "investigate-possible-missed-exchange-reuse",
+                bottleneck.severity(),
+                "Investigate possible missed exchange reuse",
+                "SQL execution %s has repeated exchange-like physical plan subtrees. "
+                        .formatted(bottleneck.evidence().get("sqlExecutionId"))
+                        + "This may indicate missed exchange reuse or another repeated shuffle-heavy pattern. "
+                        + "Spark event logs contain the physical plan, so analyzer and optimizer context may be "
+                        + "missing. Validate in Spark UI and query code before making caching, query-shape, or "
+                        + "optimizer conclusions.",
                 bottleneck.type(),
                 bottleneck.stageId());
     }
