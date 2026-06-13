@@ -21,6 +21,8 @@ SparkDoctor currently focuses on offline event log analysis:
 - detect executor and host imbalance
 - include failed task attempt evidence for failed stages
 - summarize SQL physical plan operators and detect plans with many exchanges
+- detect repeated SQL physical plan subtrees
+- detect possible missed SQL exchange reuse from repeated exchange-like physical plan subtrees
 - generate `analysis.json`
 - generate `recommendations.md` with stage hotspots and bottleneck evidence
 - generate `sql-executions.md` when SQL execution plans are present
@@ -39,7 +41,8 @@ These are the next open-source priorities.
 
 ### More Spark Diagnostics
 
-- Add more SQL-specific diagnostics from parsed physical plan nodes and metric values.
+- Refine SQL-specific diagnostics from parsed physical plan nodes and metric values.
+- Improve duplicate subtree and possible missed exchange reuse evidence as more real query plans are tested.
 
 ### Better Report Output
 

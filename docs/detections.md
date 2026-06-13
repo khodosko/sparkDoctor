@@ -299,6 +299,65 @@ exchangeCount = 4
 severity = medium
 ```
 
+### Repeated SQL Physical Plan Subtrees
+
+Reports `duplicate_sql_subtree` when a Spark SQL physical plan contains repeated subtrees after conservative normalization.
+
+SparkDoctor builds a tree from Spark's structured `SparkPlanInfo`, fingerprints every subtree, and groups duplicate fingerprints. The fingerprint removes obvious Spark-generated identity noise such as expression IDs, plan IDs, codegen IDs, and query-stage numbers while preserving semantic values such as partition counts, range bounds, and literal values.
+
+Reports when:
+
+- a SQL execution has repeated physical plan subtrees
+- a duplicate group appears at least 2 times
+- the duplicated subtree has at least 3 nodes
+- the duplicated subtree contains an interesting operator such as `Exchange`, `Join`, `Aggregate`, `Sort`, or `Scan`
+
+Severity is currently `medium`.
+
+Example:
+
+```text
+sqlExecutionId = 12
+duplicateGroups = 1
+topDuplicateRoot = Exchange
+topDuplicateCount = 2
+topDuplicateSubtreeSize = 3
+topDuplicateInterestingOperators = [Exchange, HashAggregate]
+severity = medium
+```
+
+This is a cautious signal. Repeated physical plan subtrees can indicate duplicated work, missed reuse, or a caching/materialization opportunity, but Spark event logs contain physical plan evidence rather than the full analyzer and optimizer context.
+
+### Possible Missed SQL Exchange Reuse
+
+Reports `possible_missed_exchange_reuse` when a Spark SQL physical plan contains repeated exchange-like physical plan subtrees.
+
+This is a more specific version of repeated subtree analysis. It focuses on duplicate subtree groups that contain `Exchange` operators, because repeated exchange-like structures may indicate missed exchange reuse or another repeated shuffle-heavy pattern.
+
+Reports when:
+
+- a SQL execution has repeated physical plan subtrees
+- a duplicate group appears at least 2 times
+- the duplicated subtree has at least 3 nodes
+- the duplicated subtree contains `Exchange`
+- SparkDoctor prefers duplicates rooted at an `Exchange` operator when choosing the top evidence group
+
+Severity is currently `medium`.
+
+Example:
+
+```text
+sqlExecutionId = 12
+duplicateExchangeGroups = 1
+topDuplicateRoot = Exchange
+topDuplicateCount = 2
+topDuplicateSubtreeSize = 3
+topDuplicateInterestingOperators = [Exchange, HashAggregate]
+severity = medium
+```
+
+This finding does not prove Spark failed to reuse an exchange. Spark event logs contain the physical plan, so analyzer and optimizer context may be missing. Validate the Spark UI and query code before making caching, query-shape, or optimizer conclusions.
+
 ### Failed Jobs And Stages
 
 Reports `failed_job` or `failed_stage` when Spark listener completion events show a failed job or stage.

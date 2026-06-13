@@ -33,6 +33,8 @@ Current detections include:
 - heavy speculative execution
 - executor and host imbalance
 - SQL plans with many exchanges
+- repeated SQL physical plan subtrees
+- possible missed SQL exchange reuse
 - failed jobs and stages
 
 For detailed rules, thresholds, parsed events, metrics, and evidence fields, see [docs/detections.md](docs/detections.md).

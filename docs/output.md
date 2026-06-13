@@ -94,7 +94,7 @@ Start with the terminal summary:
 
 Then open `recommendations.md` for stage hotspots, bottleneck evidence, and a readable explanation.
 
-Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping. The operator summary starts with grouped counts for common plan features such as Exchanges, Sorts, HashAggregates, Joins, Scans, and AQE nodes, then keeps detailed Spark operator counts below that.
+Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping. The operator summary starts with grouped counts for common plan features such as Exchanges, Sorts, HashAggregates, Joins, Scans, and AQE nodes, then keeps detailed Spark operator counts below that. When SparkDoctor finds repeated physical plan subtrees, the SQL report also includes a `Repeated Subtrees` section with duplicate counts, subtree size, depth, contained operators, and interesting operators.
 
 Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present. DOT labels include Spark SQL operator names, DOT node IDs, shortened simple plan strings, and compact metric labels. Metric values are included when Spark exposes matching SQL accumulator values in the event log.
 
@@ -121,7 +121,7 @@ SparkDoctor is not a complete Spark UI replacement yet.
 Current limitations:
 
 - Most detector fixtures are synthetic event logs, though the parser also has coverage for a real Spark-generated event log.
-- SQL diagnostics are still early; SparkDoctor currently summarizes plan operators and detects plans with many exchanges, but does not yet explain every SQL operator or metric.
+- SQL diagnostics are still early; SparkDoctor currently summarizes plan operators, detects plans with many exchanges, and reports repeated physical plan subtrees. These SQL reuse signals are based on physical plans from event logs; they do not prove analyzer or optimizer behavior without additional context.
 - Detector thresholds are conservative and will change as more real workloads are tested.
 
 ## Feedback And Real Event Logs
