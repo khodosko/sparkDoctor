@@ -61,7 +61,7 @@ final class SqlPlanPossibleMissedExchangeReuseDetectorTest {
     }
 
     @Test
-    void prefersExchangeRootedGroupsOverNonRootExchangeGroups() {
+    void usesExchangeRootedGroupsAndIgnoresNonRootExchangeGroups() {
         SqlExecution sqlExecution = sqlExecutionWithLatestPlan(new SqlPlanNode(
                 "Union",
                 "Union",
@@ -85,7 +85,7 @@ final class SqlPlanPossibleMissedExchangeReuseDetectorTest {
     }
 
     @Test
-    void fallsBackToExchangeContainingGroupsWhenNoExchangeRootedCandidateExists() {
+    void ignoresExchangeContainingGroupsWhenNoExchangeRootedCandidateExists() {
         SqlExecution sqlExecution = sqlExecutionWithLatestPlan(new SqlPlanNode(
                 "Union",
                 "Union",
@@ -94,12 +94,41 @@ final class SqlPlanPossibleMissedExchangeReuseDetectorTest {
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(sqlExecution));
 
-        assertEquals(1, bottlenecks.size());
-        Bottleneck bottleneck = bottlenecks.get(0);
-        assertEquals("possible_missed_exchange_reuse", bottleneck.type());
-        assertEquals("Project", bottleneck.evidence().get("topDuplicateRoot"));
-        assertEquals(1, bottleneck.evidence().get("duplicateExchangeGroups"));
-        assertEquals(List.of("Exchange"), bottleneck.evidence().get("topDuplicateInterestingOperators"));
+        assertTrue(bottlenecks.isEmpty());
+    }
+
+    @Test
+    void ignoresReusedExchangeGroupsBecauseReuseAlreadyAppearsInThePlan() {
+        SqlExecution sqlExecution = sqlExecutionWithLatestPlan(new SqlPlanNode(
+                "Union",
+                "Union",
+                List.of(),
+                List.of(
+                        reusedExchangeRange("ReusedExchange hashpartitioning(group_id#1L, 4), [plan_id=18]"),
+                        reusedExchangeRange("ReusedExchange hashpartitioning(group_id#99L, 4), [plan_id=67]"))));
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(sqlExecution));
+
+        assertTrue(bottlenecks.isEmpty());
+    }
+
+    @Test
+    void ignoresDuplicateAqeWrapperGroupsWhenReuseAlreadyAppearsBelowTheRoot() {
+        SqlExecution sqlExecution = sqlExecutionWithLatestPlan(new SqlPlanNode(
+                "AdaptiveSparkPlan",
+                "AdaptiveSparkPlan isFinalPlan=true",
+                List.of(),
+                List.of(
+                        shuffleQueryStageReusedExchangeRange(
+                                "ShuffleQueryStage 4",
+                                "ReusedExchange hashpartitioning(group_id#1L, 4), [plan_id=18]"),
+                        shuffleQueryStageReusedExchangeRange(
+                                "ShuffleQueryStage 9",
+                                "ReusedExchange hashpartitioning(group_id#99L, 4), [plan_id=67]"))));
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(sqlExecution));
+
+        assertTrue(bottlenecks.isEmpty());
     }
 
     @Test
@@ -189,6 +218,26 @@ final class SqlPlanPossibleMissedExchangeReuseDetectorTest {
                 List.of(new SqlPlanNode(
                         "Exchange",
                         "Exchange hashpartitioning(group_id#99L, 4), [plan_id=67]",
+                        List.of(),
+                        List.of(new SqlPlanNode("Range", "Range (0, 1000, step=1, splits=8)", List.of(), List.of())))));
+    }
+
+    private SqlPlanNode reusedExchangeRange(String exchangeSimpleString) {
+        return new SqlPlanNode(
+                "ReusedExchange",
+                exchangeSimpleString,
+                List.of(),
+                List.of(new SqlPlanNode("Range", "Range (0, 1000, step=1, splits=8)", List.of(), List.of())));
+    }
+
+    private SqlPlanNode shuffleQueryStageReusedExchangeRange(String queryStageSimpleString, String exchangeSimpleString) {
+        return new SqlPlanNode(
+                "ShuffleQueryStage",
+                queryStageSimpleString,
+                List.of(),
+                List.of(new SqlPlanNode(
+                        "ReusedExchange",
+                        exchangeSimpleString,
                         List.of(),
                         List.of(new SqlPlanNode("Range", "Range (0, 1000, step=1, splits=8)", List.of(), List.of())))));
     }

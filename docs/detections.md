@@ -332,15 +332,16 @@ This is a cautious signal. Repeated physical plan subtrees can indicate duplicat
 
 Reports `possible_missed_exchange_reuse` when a Spark SQL physical plan contains repeated exchange-like physical plan subtrees.
 
-This is a more specific version of repeated subtree analysis. It focuses on duplicate subtree groups that contain `Exchange` operators, because repeated exchange-like structures may indicate missed exchange reuse or another repeated shuffle-heavy pattern.
+This is a more specific version of repeated subtree analysis. It focuses on duplicate subtree groups rooted at `Exchange` operators, because repeated exchange-like structures may indicate missed exchange reuse or another repeated shuffle-heavy pattern.
 
 Reports when:
 
 - a SQL execution has repeated physical plan subtrees
 - a duplicate group appears at least 2 times
 - the duplicated subtree has at least 3 nodes
-- the duplicated subtree contains `Exchange`
-- SparkDoctor prefers duplicates rooted at an `Exchange` operator when choosing the top evidence group
+- the duplicated subtree is rooted at `Exchange`
+
+SparkDoctor does not treat duplicate `ReusedExchange` subtrees as possible missed reuse, because the physical plan already shows reuse.
 
 Severity is currently `medium`.
 

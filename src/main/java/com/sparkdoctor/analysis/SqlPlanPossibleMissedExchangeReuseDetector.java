@@ -32,23 +32,18 @@ public final class SqlPlanPossibleMissedExchangeReuseDetector {
             List<DuplicateSqlSubtree> exchangeCandidates = collector.findDuplicates(sqlExecution.latestPlanRoot()).stream()
                     .filter(duplicate -> duplicate.count() >= 2)
                     .filter(duplicate -> duplicate.subtreeSize() >= MIN_SUBTREE_SIZE)
-                    .filter(duplicate -> duplicate.interestingOperators().contains(EXCHANGE))
+                    .filter(this::isExchangeRootedCandidate)
                     .toList();
             if (exchangeCandidates.isEmpty()) {
                 continue;
             }
 
-            List<DuplicateSqlSubtree> exchangeRootedCandidates = exchangeCandidates.stream()
-                    .filter(duplicate -> duplicate.rootNodeName().contains(EXCHANGE))
-                    .toList();
-            List<DuplicateSqlSubtree> prioritizedCandidates =
-                    exchangeRootedCandidates.isEmpty() ? exchangeCandidates : exchangeRootedCandidates;
-            DuplicateSqlSubtree topDuplicate = prioritizedCandidates.get(0);
+            DuplicateSqlSubtree topDuplicate = exchangeCandidates.get(0);
 
             Map<String, Object> evidence = new LinkedHashMap<>();
             evidence.put("sqlExecutionId", sqlExecution.id());
             evidence.put("description", valueOrUnknown(sqlExecution.description()));
-            evidence.put("duplicateExchangeGroups", prioritizedCandidates.size());
+            evidence.put("duplicateExchangeGroups", exchangeCandidates.size());
             evidence.put("topDuplicateRoot", topDuplicate.rootNodeName());
             evidence.put("topDuplicateCount", topDuplicate.count());
             evidence.put("topDuplicateSubtreeSize", topDuplicate.subtreeSize());
@@ -67,6 +62,10 @@ public final class SqlPlanPossibleMissedExchangeReuseDetector {
         }
 
         return bottlenecks;
+    }
+
+    private boolean isExchangeRootedCandidate(DuplicateSqlSubtree duplicate) {
+        return EXCHANGE.equals(duplicate.rootNodeName());
     }
 
     private String valueOrUnknown(String value) {
