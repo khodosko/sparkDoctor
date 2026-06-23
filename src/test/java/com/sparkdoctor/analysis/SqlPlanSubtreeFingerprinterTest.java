@@ -61,6 +61,39 @@ final class SqlPlanSubtreeFingerprinterTest {
     }
 
     @Test
+    void normalizesPushedFiltersWithDifferentOrderTheSame() {
+        assertEquals(
+                SqlPlanSubtreeFingerprinter.normalize(
+                        "BatchScan table PushedFilters: [IsNotNull(customer_id), EqualTo(country,US)]"),
+                SqlPlanSubtreeFingerprinter.normalize(
+                        "BatchScan table PushedFilters: [EqualTo(country,US), IsNotNull(customer_id)]"));
+    }
+
+    @Test
+    void preservesNestedCommasInsidePushedFilters() {
+        assertEquals(
+                "BatchScan table PushedFilters: [EqualTo(country,US), In(region, [CA, US]), IsNotNull(customer_id)]",
+                SqlPlanSubtreeFingerprinter.normalize(
+                        "BatchScan table PushedFilters: [IsNotNull(customer_id), In(region, [CA, US]), EqualTo(country,US)]"));
+    }
+
+    @Test
+    void keepsDifferentPushedFiltersDistinct() {
+        assertNotEquals(
+                SqlPlanSubtreeFingerprinter.normalize(
+                        "BatchScan table PushedFilters: [IsNotNull(customer_id), EqualTo(country,US)]"),
+                SqlPlanSubtreeFingerprinter.normalize(
+                        "BatchScan table PushedFilters: [IsNotNull(customer_id), EqualTo(country,CA)]"));
+    }
+
+    @Test
+    void doesNotSortNonPushedFiltersBracketLists() {
+        assertNotEquals(
+                SqlPlanSubtreeFingerprinter.normalize("BatchScan table DataFilters: [a, b]"),
+                SqlPlanSubtreeFingerprinter.normalize("BatchScan table DataFilters: [b, a]"));
+    }
+
+    @Test
     void fingerprintsEquivalentSubtreesWithDifferentSparkNoiseTheSame() {
         SqlPlanSubtreeFingerprint left = fingerprinter.fingerprint(projectSubtree(
                 "Project [(id#1L % 10) AS group_id#1L]",
@@ -102,6 +135,22 @@ final class SqlPlanSubtreeFingerprinterTest {
                 List.of(rangeSubtree("Range (0, 2000)"), rangeSubtree("Range (0, 1000)"))));
 
         assertNotEquals(left, right);
+    }
+
+    @Test
+    void fingerprintsEquivalentPushedFilterSubtreesTheSame() {
+        SqlPlanSubtreeFingerprint left = fingerprinter.fingerprint(new SqlPlanNode(
+                "BatchScan",
+                "BatchScan table PushedFilters: [IsNotNull(customer_id), EqualTo(country,US)]",
+                List.of(),
+                List.of(rangeSubtree("Range (0, 1000)"))));
+        SqlPlanSubtreeFingerprint right = fingerprinter.fingerprint(new SqlPlanNode(
+                "BatchScan",
+                "BatchScan table PushedFilters: [EqualTo(country,US), IsNotNull(customer_id)]",
+                List.of(),
+                List.of(rangeSubtree("Range (0, 1000)"))));
+
+        assertEquals(left, right);
     }
 
     @Test
