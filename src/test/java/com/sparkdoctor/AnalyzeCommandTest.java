@@ -748,6 +748,55 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeWritesPossibleMissedExchangeReuseBottleneckForDuplicateExchangeFixture() throws Exception {
+        Path outputDirectory = tempDir.resolve("sql-duplicate-exchange-report");
+        StringWriter output = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setOut(new PrintWriter(output, true));
+
+        int exitCode = commandLine.execute(
+                "src/test/resources/fixtures/sql-duplicate-exchange-eventlog.json",
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(0, exitCode);
+        assertTrue(output.toString().contains("Application: sql_duplicate_exchange_customer_etl"));
+        assertTrue(output.toString().contains("SQL executions: 1"));
+        assertTrue(output.toString().contains("Issues detected: 1"));
+        assertTrue(output.toString().contains("Recommendations: 1"));
+        assertTrue(output.toString().contains(
+                "- [medium] possible_missed_exchange_reuse (application): SQL execution 21 has repeated exchange-like physical plan subtrees."));
+
+        JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
+        assertEquals(1, json.path("sqlExecutions").size());
+        assertEquals(21L, json.path("sqlExecutions").get(0).path("id").asLong());
+        assertEquals(1, json.path("bottlenecks").size());
+        assertEquals("possible_missed_exchange_reuse", json.path("bottlenecks").get(0).path("type").asText());
+        assertEquals(-1, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals(21L, json.path("bottlenecks").get(0).path("evidence").path("sqlExecutionId").asLong());
+        assertEquals(
+                "Exchange",
+                json.path("bottlenecks").get(0).path("evidence").path("topDuplicateRoot").asText());
+        assertEquals(2, json.path("bottlenecks").get(0).path("evidence").path("topDuplicateCount").asInt());
+        assertEquals(
+                "low",
+                json.path("bottlenecks").get(0).path("evidence").path("confidence").asText());
+        assertEquals(
+                "investigate-possible-missed-exchange-reuse",
+                json.path("recommendations").get(0).path("id").asText());
+
+        String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
+        assertTrue(recommendationsMarkdown.contains("### Investigate possible missed exchange reuse"));
+        assertTrue(recommendationsMarkdown.contains("- Scope: application"));
+        assertTrue(recommendationsMarkdown.contains("- confidence: low"));
+        assertTrue(recommendationsMarkdown.contains("- topDuplicateRoot: Exchange"));
+        String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));
+        assertTrue(sqlExecutionsMarkdown.contains("### Repeated Subtrees"));
+        assertTrue(sqlExecutionsMarkdown.contains("- Root: Exchange; count=2; subtreeSize=3; maxDepth=3"));
+        assertTrue(sqlExecutionsMarkdown.contains("interesting=Exchange, HashAggregate"));
+    }
+
+    @Test
     void analyzeWritesSpeculationHeavyBottleneckForSpeculationHeavyFixture() throws Exception {
         Path outputDirectory = tempDir.resolve("speculation-heavy-report");
         StringWriter output = new StringWriter();
