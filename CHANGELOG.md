@@ -7,6 +7,7 @@ All notable changes to SparkDoctor will be documented in this file.
 - Suppressed broad duplicate SQL subtree findings when the same SQL execution already has a more specific possible missed exchange reuse finding.
 - Added explicit confidence and validation evidence for possible missed exchange reuse findings.
 - Tuned possible missed exchange reuse detection to require duplicated subtrees rooted at `Exchange`, reducing noise from broader AQE or wrapper subtrees.
+- Hardened SQL subtree fingerprinting for `PushedFilters` ordering so equivalent pushed-filter lists from Spark or connectors can match even when filter order is unstable.
 
 ## 0.1.4 - 2026-06-12
 
