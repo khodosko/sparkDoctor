@@ -96,6 +96,7 @@ final class AnalysisJsonWriterTest {
         assertTrue(Files.exists(analysisPath));
 
         JsonNode json = objectMapper.readTree(analysisPath.toFile());
+        assertEquals("1", json.path("schemaVersion").asText());
         assertEquals("app-1", json.path("application").path("id").asText());
         assertEquals("daily_job", json.path("application").path("name").asText());
         assertEquals(1500L, json.path("application").path("durationMillis").asLong());

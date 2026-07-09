@@ -39,6 +39,12 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
 
 ```json
 {
+  "schemaVersion": "1",
+  "application": {
+    "id": "app-spill-heavy-0001",
+    "name": "spill_heavy_customer_etl",
+    "durationMillis": 10000
+  },
   "summary": {
     "jobs": 1,
     "jobsCompleted": 0,
@@ -82,6 +88,23 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
   ]
 }
 ```
+
+## `analysis.json` Contract
+
+`analysis.json` is SparkDoctor's machine-readable output contract. It is intended for scripts, CI checks, and downstream tools that need stable Spark analysis evidence without parsing terminal or Markdown output.
+
+The top-level `schemaVersion` field identifies the contract version. Additive fields may be introduced within the same schema version, but existing key fields should not be renamed, removed, or have their meaning changed casually. If a future change needs to alter existing field names or semantics, it should use a new schema version.
+
+Important stable fields include:
+
+- `application.id`, `application.name`, and `application.durationMillis`
+- `summary.jobs`, `summary.jobsCompleted`, `summary.jobsFailed`
+- `summary.stages`, `summary.stagesCompleted`, `summary.stagesFailed`
+- `summary.tasks` and `summary.issuesDetected`
+- `stages[*].id`, `stages[*].name`, completed task counts, task duration summaries, shuffle totals, and spill totals
+- `failedJobs` and `failedStages`
+- `bottlenecks[*].type`, `bottlenecks[*].severity`, `bottlenecks[*].stageId`, and `bottlenecks[*].evidence`
+- `recommendations[*].id`, `recommendations[*].severity`, `recommendations[*].relatedBottleneckType`, and `recommendations[*].stageId`
 
 ## How To Read The Output
 

@@ -3,6 +3,7 @@ package com.sparkdoctor.model;
 import java.util.List;
 
 public record AnalysisReport(
+        String schemaVersion,
         ApplicationAnalysis application,
         AnalysisSummary summary,
         List<StageAnalysis> stages,
@@ -11,6 +12,8 @@ public record AnalysisReport(
         List<FailedStage> failedStages,
         List<Bottleneck> bottlenecks,
         List<Recommendation> recommendations) {
+    public static final String SCHEMA_VERSION = "1";
+
     public static AnalysisReport from(ParsedEventLog parsedEventLog) {
         return from(
                 parsedEventLog.applicationSummary(),
@@ -100,6 +103,7 @@ public record AnalysisReport(
                         : null);
 
         return new AnalysisReport(
+                SCHEMA_VERSION,
                 application,
                 new AnalysisSummary(
                         analysisSummary.jobs(),

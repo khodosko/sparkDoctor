@@ -14,6 +14,7 @@ final class AnalysisReportTest {
 
         AnalysisReport report = AnalysisReport.from(applicationSummary);
 
+        assertEquals("1", report.schemaVersion());
         assertEquals("app-1", report.application().id());
         assertEquals("daily_job", report.application().name());
         assertEquals(1000L, report.application().startTimeMillis());
@@ -57,6 +58,7 @@ final class AnalysisReportTest {
 
         AnalysisReport report = AnalysisReport.from(parsedEventLog);
 
+        assertEquals("1", report.schemaVersion());
         assertEquals(1, report.summary().jobs());
         assertEquals(0, report.summary().jobsCompleted());
         assertEquals(0, report.summary().jobsFailed());
