@@ -86,6 +86,52 @@ final class RecommendationsMarkdownWriterTest {
     }
 
     @Test
+    void correlatesEvidenceForRepeatedApplicationScopedRecommendations() throws Exception {
+        AnalysisReport report = AnalysisReport.from(
+                new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),
+                new AnalysisSummary(2, 0, 2, 0, 0, 0, 0, 2),
+                List.of(),
+                List.of(
+                        new Bottleneck(
+                                "failed_job",
+                                "high",
+                                -1,
+                                "Job 11 failed.",
+                                Map.of("jobId", 11, "result", "JobFailed")),
+                        new Bottleneck(
+                                "failed_job",
+                                "high",
+                                -1,
+                                "Job 12 failed.",
+                                Map.of("jobId", 12, "result", "JobFailed"))),
+                List.of(
+                        new Recommendation(
+                                "investigate-failed-job",
+                                "high",
+                                "Investigate failed Spark job",
+                                "Investigate job 11.",
+                                "failed_job",
+                                -1),
+                        new Recommendation(
+                                "investigate-failed-job",
+                                "high",
+                                "Investigate failed Spark job",
+                                "Investigate job 12.",
+                                "failed_job",
+                                -1)));
+
+        Path recommendationsPath = writer.write(tempDir.resolve("repeated-application-findings"), report);
+
+        String markdown = Files.readString(recommendationsPath);
+        String[] recommendationSections = markdown.split("### Investigate failed Spark job");
+        assertEquals(3, recommendationSections.length);
+        assertTrue(recommendationSections[1].contains("- jobId: 11"));
+        assertTrue(!recommendationSections[1].contains("- jobId: 12"));
+        assertTrue(recommendationSections[2].contains("- jobId: 12"));
+        assertTrue(!recommendationSections[2].contains("- jobId: 11"));
+    }
+
+    @Test
     void writesApplicationScopeForApplicationLevelRecommendations() throws Exception {
         AnalysisReport report = AnalysisReport.from(
                 new ApplicationSummary("app-1", "daily_job", 1000L, 2500L),

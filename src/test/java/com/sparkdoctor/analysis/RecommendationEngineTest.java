@@ -19,7 +19,8 @@ final class RecommendationEngineTest {
                 "medium",
                 4,
                 "Stage 4 has task duration skew.",
-                Map.of("skewRatio", 5.0));
+                Map.of("skewRatio", 5.0),
+                "bottleneck-1");
 
         List<Recommendation> recommendations = recommendationEngine.recommend(List.of(bottleneck));
 
@@ -30,6 +31,7 @@ final class RecommendationEngineTest {
         assertEquals("Investigate task duration skew", recommendation.title());
         assertEquals("task_duration_skew", recommendation.relatedBottleneckType());
         assertEquals(4, recommendation.stageId());
+        assertEquals("bottleneck-1", recommendation.relatedBottleneckId());
         assertTrue(recommendation.description().contains("shuffle read sizes"));
     }
 

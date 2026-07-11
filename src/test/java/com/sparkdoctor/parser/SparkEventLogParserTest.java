@@ -2,16 +2,47 @@ package com.sparkdoctor.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sparkdoctor.model.ApplicationSummary;
 import com.sparkdoctor.model.ParsedEventLog;
+import com.sparkdoctor.model.StageAnalysis;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 final class SparkEventLogParserTest {
     private final SparkEventLogParser parser = new SparkEventLogParser();
+
+    @Test
+    void rejectsEmptyEventStream() {
+        IOException exception = assertThrows(IOException.class, () -> parser.parse(List.<String>of()));
+
+        assertEquals("Event log does not contain any recognized Spark listener events.", exception.getMessage());
+    }
+
+    @Test
+    void rejectsJsonWithoutRecognizedSparkListenerEvents() {
+        IOException exception = assertThrows(IOException.class, () -> parser.parse(List.of(
+                "{}",
+                "{\"Event\":\"SparkListenerLogStart\",\"Spark Version\":\"4.1.2\"}")));
+
+        assertEquals("Event log does not contain any recognized Spark listener events.", exception.getMessage());
+    }
+
+    @Test
+    void rejectsSecondApplicationStartEvent() {
+        IOException exception = assertThrows(IOException.class, () -> parser.parse(List.of(
+                "{\"Event\":\"SparkListenerApplicationStart\",\"App ID\":\"app-first\"}",
+                "{\"Event\":\"SparkListenerApplicationStart\",\"App ID\":\"app-second\"}")));
+
+        assertEquals(
+                "Event log contains multiple Spark application logs. "
+                        + "Point SparkDoctor at one application directory or event log file.",
+                exception.getMessage());
+    }
 
     @Test
     void parsesApplicationStartAndEndEventsFromLines() throws Exception {
@@ -111,6 +142,35 @@ final class SparkEventLogParserTest {
         assertEquals(4, parsedEventLog.sqlExecutions().get(0).latestPlanRoot().subtreeSize());
         assertEquals("2048", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(44L));
         assertEquals("4", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(55L));
+    }
+
+    @Test
+    void preservesAccumulatorEventOrderWhileIgnoringOlderStageAttemptCompletion() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart\","
+                        + "\"executionId\":3,\"time\":1000}",
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":7,\"Stage IDs\":[9],"
+                        + "\"Properties\":{\"spark.sql.execution.id\":\"3\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":9,\"Stage Attempt ID\":0}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":9,\"Stage Attempt ID\":1}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":9,\"Stage Attempt ID\":1,\"Accumulables\":["
+                        + "{\"ID\":44,\"Value\":\"selected-stage\",\"Metadata\":\"sql\"}]}}",
+                "{\"Event\":\"org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates\","
+                        + "\"executionId\":3,\"accumUpdates\":[[44,\"driver-latest\"]]}",
+                "{\"Event\":\"SparkListenerJobStart\",\"Job ID\":8,\"Stage IDs\":[9],"
+                        + "\"Properties\":{\"spark.sql.execution.id\":\"4\"}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":9,\"Stage Attempt ID\":0,\"Accumulables\":["
+                        + "{\"ID\":44,\"Value\":\"older-stage-late\",\"Metadata\":\"sql\"}]}}"));
+
+        assertEquals(1, parsedEventLog.sqlExecutions().size());
+        assertEquals(3L, parsedEventLog.sqlExecutions().get(0).id());
+        assertEquals("driver-latest", parsedEventLog.sqlExecutions().get(0).sqlMetricValues().get(44L));
+        assertEquals(1, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(0, parsedEventLog.analysisSummary().stagesFailed());
     }
 
     @Test
@@ -275,6 +335,36 @@ final class SparkEventLogParserTest {
     }
 
     @Test
+    void retainsFirstSuccessfulTaskMetricsWhileCountingLaterSuccessfulAttempts() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"speculative\","
+                        + "\"Number of Tasks\":1}}",
+                successfulTaskEndAttempt(
+                        4, 0, 100, 0, false, 0, 1000, 1000, 100, 10, 1, "executor-first", "host-first"),
+                successfulTaskEndAttempt(
+                        4, 0, 101, 0, true, 0, 9000, 9000, 900, 90, 9, "executor-later", "host-later")));
+
+        assertEquals(1, parsedEventLog.analysisSummary().tasks());
+        StageAnalysis stage = parsedEventLog.stages().get(0);
+        assertEquals(1, stage.completedTasks());
+        assertEquals(List.of(1000L), stage.taskDurationMillis());
+        assertEquals(1000L, stage.shuffleReadBytes());
+        assertEquals(List.of(1000L), stage.taskShuffleReadBytes());
+        assertEquals(100L, stage.memoryBytesSpilled());
+        assertEquals(10L, stage.diskBytesSpilled());
+        assertEquals(1, stage.duplicateSuccessfulTaskAttempts());
+        assertEquals(1, stage.speculativeTaskAttempts());
+        assertEquals(9000L, stage.speculativeTaskAttemptDurationMillis());
+        assertEquals(1, stage.executorSummaries().size());
+        assertEquals("executor-first", stage.executorSummaries().get(0).id());
+        assertEquals(1000L, stage.executorSummaries().get(0).taskDurationMillis());
+        assertEquals(1, stage.hostSummaries().size());
+        assertEquals("host-first", stage.hostSummaries().get(0).id());
+        assertEquals(1000L, stage.hostSummaries().get(0).taskDurationMillis());
+    }
+
+    @Test
     void usesLatestStageAttemptMetricsWhenStageIsRetried() throws Exception {
         ParsedEventLog parsedEventLog = parser.parse(List.of(
                 "{\"Event\":\"SparkListenerStageSubmitted\","
@@ -306,6 +396,114 @@ final class SparkEventLogParserTest {
         assertEquals(100L, parsedEventLog.stages().get(0).memoryBytesSpilled());
         assertEquals(10L, parsedEventLog.stages().get(0).diskBytesSpilled());
         assertEquals(0, parsedEventLog.failedStages().size());
+    }
+
+    @Test
+    void aggregatesFailedTaskAttemptsAcrossStageAttemptsForRetryWaste() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                failedTaskEndAttempt(4, 0, 100, 0, 0, 10_000, "ExceptionFailure"),
+                failedTaskEndAttempt(4, 0, 101, 0, 0, 10_000, "ExecutorLostFailure"),
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1,\"Failure Reason\":\"Fetch failed\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                failedTaskEndAttempt(4, 1, 102, 0, 0, 10_000, "ExceptionFailure"),
+                taskEndAttempt(4, 1, 103, 0, true, 0, 1000, 1000, 100, 10, 0),
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}"));
+
+        StageAnalysis stage = parsedEventLog.stages().get(0);
+        assertEquals(1, stage.completedTasks());
+        assertEquals(List.of(1000L), stage.taskDurationMillis());
+        assertEquals(1000L, stage.shuffleReadBytes());
+        assertEquals(100L, stage.memoryBytesSpilled());
+        assertEquals(10L, stage.diskBytesSpilled());
+        assertEquals(3, stage.failedTaskAttempts());
+        assertEquals(30_000L, stage.failedTaskAttemptDurationMillis());
+        assertEquals(List.of("ExceptionFailure", "ExecutorLostFailure"), stage.failedTaskAttemptReasons());
+        assertEquals(0, parsedEventLog.failedStages().size());
+        assertEquals(1, parsedEventLog.bottlenecks().size());
+        assertEquals("retry_waste", parsedEventLog.bottlenecks().get(0).type());
+        assertEquals("bottleneck-1", parsedEventLog.bottlenecks().get(0).instanceId());
+        assertEquals("bottleneck-1", parsedEventLog.recommendations().get(0).relatedBottleneckId());
+        assertEquals(3, parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttempts"));
+        assertEquals(
+                30_000L,
+                parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttemptDurationMillis"));
+        assertEquals(
+                List.of("ExceptionFailure", "ExecutorLostFailure"),
+                parsedEventLog.bottlenecks().get(0).evidence().get("failedTaskAttemptReasons"));
+    }
+
+    @Test
+    void retainsHighestStageAttemptWhenOlderTaskEventArrivesLate() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Number of Tasks\":1}}",
+                taskEndAttempt(4, 1, 101, 0, true, 0, 1000, 1000, 100, 10, 0),
+                taskEndAttempt(4, 0, 100, 0, true, 0, 9000, 9000, 900, 90, 0)));
+
+        assertEquals(1, parsedEventLog.analysisSummary().tasks());
+        assertEquals(1, parsedEventLog.stages().size());
+        assertEquals(1, parsedEventLog.stages().get(0).completedTasks());
+        assertEquals(1000L, parsedEventLog.stages().get(0).minTaskDurationMillis());
+        assertEquals(1000L, parsedEventLog.stages().get(0).maxTaskDurationMillis());
+        assertEquals(1000L, parsedEventLog.stages().get(0).shuffleReadBytes());
+        assertEquals(100L, parsedEventLog.stages().get(0).memoryBytesSpilled());
+        assertEquals(10L, parsedEventLog.stages().get(0).diskBytesSpilled());
+    }
+
+    @Test
+    void retainsSuccessfulHighestStageAttemptWhenOlderFailureCompletesLate() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\"}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\"}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\","
+                        + "\"Failure Reason\":\"older failure\"}}"));
+
+        assertEquals(1, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(0, parsedEventLog.analysisSummary().stagesFailed());
+        assertTrue(parsedEventLog.failedStages().isEmpty());
+        assertTrue(parsedEventLog.bottlenecks().stream()
+                .noneMatch(bottleneck -> "failed_stage".equals(bottleneck.type())));
+    }
+
+    @Test
+    void retainsFailedHighestStageAttemptWhenOlderSuccessCompletesLate() throws Exception {
+        ParsedEventLog parsedEventLog = parser.parse(List.of(
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\"}}",
+                "{\"Event\":\"SparkListenerStageSubmitted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\"}}",
+                failedTaskEndAttempt(4, 1, 101, 0, 0, 1000, "ExceptionFailure"),
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":1,\"Stage Name\":\"retry\","
+                        + "\"Failure Reason\":\"newer failure\"}}",
+                "{\"Event\":\"SparkListenerStageCompleted\","
+                        + "\"Stage Info\":{\"Stage ID\":4,\"Stage Attempt ID\":0,\"Stage Name\":\"retry\"}}"));
+
+        assertEquals(0, parsedEventLog.analysisSummary().stagesCompleted());
+        assertEquals(1, parsedEventLog.analysisSummary().stagesFailed());
+        assertEquals(1, parsedEventLog.failedStages().size());
+        assertEquals("newer failure", parsedEventLog.failedStages().get(0).failureReason());
+        assertEquals(1, parsedEventLog.failedStages().get(0).failedTaskAttempts());
+        assertTrue(parsedEventLog.bottlenecks().stream()
+                .anyMatch(bottleneck -> "failed_stage".equals(bottleneck.type())));
     }
 
     @Test
@@ -948,5 +1146,56 @@ final class SparkEventLogParserTest {
                 diskBytesSpilled,
                 shuffleReadBytes - remoteBytesRead,
                 remoteBytesRead);
+    }
+
+    private String successfulTaskEndAttempt(
+            int stageId,
+            int stageAttemptId,
+            long taskId,
+            long taskIndex,
+            boolean speculative,
+            long launchTimeMillis,
+            long finishTimeMillis,
+            long shuffleReadBytes,
+            long memoryBytesSpilled,
+            long diskBytesSpilled,
+            long remoteBytesRead,
+            String executorId,
+            String host) {
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,\"Stage Attempt ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Index\":%d,\"Launch Time\":%d,\"Finish Time\":%d,"
+                + "\"Successful\":true,\"Speculative\":%s,\"Executor ID\":\"%s\",\"Host\":\"%s\"},"
+                + "\"Task End Reason\":{\"Reason\":\"Success\"},"
+                + "\"Task Metrics\":{\"Memory Bytes Spilled\":%d,\"Disk Bytes Spilled\":%d,"
+                + "\"Shuffle Read Metrics\":{\"Local Bytes Read\":%d,\"Remote Bytes Read\":%d}}}"
+        ).formatted(
+                stageId,
+                stageAttemptId,
+                taskId,
+                taskIndex,
+                launchTimeMillis,
+                finishTimeMillis,
+                speculative,
+                executorId,
+                host,
+                memoryBytesSpilled,
+                diskBytesSpilled,
+                shuffleReadBytes - remoteBytesRead,
+                remoteBytesRead);
+    }
+
+    private String failedTaskEndAttempt(
+            int stageId,
+            int stageAttemptId,
+            long taskId,
+            long taskIndex,
+            long launchTimeMillis,
+            long finishTimeMillis,
+            String reason) {
+        return ("{\"Event\":\"SparkListenerTaskEnd\",\"Stage ID\":%d,\"Stage Attempt ID\":%d,"
+                + "\"Task Info\":{\"Task ID\":%d,\"Index\":%d,\"Launch Time\":%d,\"Finish Time\":%d,"
+                + "\"Successful\":false},\"Task End Reason\":{\"Reason\":\"%s\"}}"
+        ).formatted(
+                stageId, stageAttemptId, taskId, taskIndex, launchTimeMillis, finishTimeMillis, reason);
     }
 }

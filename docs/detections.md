@@ -47,7 +47,7 @@ Current summary and stage metrics include:
 - median, p95, and p99 task disk bytes spilled
 - per-task memory and disk spill distributions
 
-Failed task attempts are ignored for stage metric aggregation. Successful task attempts are deduplicated by stage ID, stage attempt ID, and task index so retries and speculative attempts do not inflate duration, shuffle, or spill metrics.
+Failed task attempts do not contribute to successful duration, shuffle, spill, or worker metrics. Their count, duration, and unique reasons are aggregated across all attempts of a stage for retry-waste analysis. Successful metrics, terminal completion state, and failed-stage details come from the highest observed stage attempt ID. Successful task attempts within that stage attempt are deduplicated by task index. When more than one successful attempt exists for an index in the selected stage attempt, SparkDoctor retains the first success while still counting duplicate successes and all successful speculative attempts for that selected attempt.
 
 ## Current Bottleneck Rules
 
@@ -97,7 +97,9 @@ Reports when:
 - stage has at least 2 shuffle-reading tasks
 - p95 task shuffle read bytes is at least 256 MiB
 - or max task shuffle read bytes is at least 2 GiB
-- and the stage does not look like shuffle partition skew
+- and a stage with at least 10 shuffle-reading tasks does not qualify for the more specific shuffle partition skew rule
+
+The skew suppression does not apply to stages with 2-9 shuffle-reading tasks because those stages cannot qualify for `shuffle_partition_skew`.
 
 Severity is `high` when:
 
@@ -368,7 +370,7 @@ Reports `failed_job` or `failed_stage` when Spark listener completion events sho
 
 Severity is `high` because a failed job or stage usually means the Spark application did not finish the intended work or paid retry/recovery cost.
 
-For failed stages, SparkDoctor also includes failed task attempt count, failed attempt duration, and failed task reasons when task end events are present before the stage failure event.
+For failed stages, SparkDoctor also includes failed task attempt count, failed attempt duration, and failed task reasons recorded for the selected highest stage attempt.
 
 Example:
 

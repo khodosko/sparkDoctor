@@ -8,10 +8,10 @@ import java.util.Map;
 
 public final class OversizedShufflePartitionDetector {
     private static final int MIN_SHUFFLE_READING_TASKS = 2;
-    private static final double SKEW_RATIO_THRESHOLD = 5.0;
     private static final long MIB = 1024L * 1024L;
     private static final long GIB = 1024L * MIB;
-    private static final long MEDIUM_P95_SHUFFLE_READ_BYTES = 256L * MIB;
+    private static final long MEDIUM_P95_SHUFFLE_READ_BYTES =
+            ShufflePartitionSkewPolicy.SKEWED_PARTITION_THRESHOLD_BYTES;
     private static final long HIGH_P95_SHUFFLE_READ_BYTES = GIB;
     private static final long HIGH_MAX_SHUFFLE_READ_BYTES = 2L * GIB;
 
@@ -45,20 +45,12 @@ public final class OversizedShufflePartitionDetector {
         if (stage.p95TaskShuffleReadBytes() == null || stage.maxTaskShuffleReadBytes() == null) {
             return false;
         }
-        if (isLikelySkew(stage)) {
+        if (ShufflePartitionSkewPolicy.qualifies(stage)) {
             return false;
         }
 
         return stage.p95TaskShuffleReadBytes() >= MEDIUM_P95_SHUFFLE_READ_BYTES
                 || stage.maxTaskShuffleReadBytes() >= HIGH_MAX_SHUFFLE_READ_BYTES;
-    }
-
-    private boolean isLikelySkew(StageAnalysis stage) {
-        if (stage.medianTaskShuffleReadBytes() == null || stage.medianTaskShuffleReadBytes() <= 0) {
-            return false;
-        }
-
-        return stage.maxTaskShuffleReadBytes() > stage.medianTaskShuffleReadBytes() * SKEW_RATIO_THRESHOLD;
     }
 
     private String severity(StageAnalysis stage) {

@@ -60,19 +60,16 @@ These are the next open-source priorities.
 
 ### Easier Installation
 
-- Publish the first versioned GitHub release.
-- Document common installation paths.
+- Add more installation options beyond release archives and source builds.
+- Improve platform-specific installation guidance as contributor feedback identifies gaps.
 
 ## Later
 
 These are useful, but not the immediate focus.
 
-- Databricks event log export documentation.
-- EMR/S3 event log documentation.
 - Cloud storage inputs for S3, GCS, and Azure Blob Storage.
-- Run-to-run comparison.
 - Richer Spark SQL execution analysis.
-- CI usage examples for detecting Spark job performance regressions.
+- Broader compatibility coverage across Spark versions and deployment environments.
 
 ## Contribution Areas
 

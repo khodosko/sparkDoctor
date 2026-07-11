@@ -53,6 +53,11 @@ public final class SparkEventLogParser {
     private static final String SQL_ADAPTIVE_EXECUTION_UPDATE = "SparkListenerSQLAdaptiveExecutionUpdate";
     private static final String SQL_EXECUTION_END = "SparkListenerSQLExecutionEnd";
     private static final String SQL_DRIVER_ACCUM_UPDATES = "SparkListenerDriverAccumUpdates";
+    private static final String NO_RECOGNIZED_EVENTS_MESSAGE =
+            "Event log does not contain any recognized Spark listener events.";
+    private static final String MULTIPLE_APPLICATION_LOGS_MESSAGE =
+            "Event log contains multiple Spark application logs. "
+                    + "Point SparkDoctor at one application directory or event log file.";
 
     private final EventLogReader eventLogReader;
     private final ObjectMapper objectMapper;
@@ -165,18 +170,31 @@ public final class SparkEventLogParser {
         Map<Integer, FailedStage> failedStages = new LinkedHashMap<>();
         Set<Long> successfulTaskIdsWithoutStage = new HashSet<>();
         Map<StageKey, StageAccumulator> stageAttempts = new LinkedHashMap<>();
+        Map<StageKey, StageCompletion> stageCompletions = new LinkedHashMap<>();
+        Map<Integer, StageAccumulator> failedTaskAttemptTotals = new LinkedHashMap<>();
         Map<Integer, Integer> latestStageAttemptIds = new HashMap<>();
         Map<TaskAttemptKey, ParsedTaskAttempt> successfulTaskAttempts = new LinkedHashMap<>();
         Map<Long, SqlExecutionAccumulator> sqlExecutions = new LinkedHashMap<>();
         Map<Integer, Long> stageSqlExecutionIds = new HashMap<>();
+        List<SqlAccumulatorUpdate> sqlAccumulatorUpdates = new ArrayList<>();
+        int recognizedEventCount = 0;
+        boolean applicationStartSeen = false;
 
         var iterator = eventLines.iterator();
         while (iterator.hasNext()) {
             String eventLine = iterator.next();
             JsonNode event = objectMapper.readTree(eventLine);
             String eventType = event.path("Event").asText();
+            if (!isRecognizedEvent(eventType)) {
+                continue;
+            }
+            recognizedEventCount++;
 
             if (APPLICATION_START.equals(eventType)) {
+                if (applicationStartSeen) {
+                    throw new IOException(MULTIPLE_APPLICATION_LOGS_MESSAGE);
+                }
+                applicationStartSeen = true;
                 appId = textOrNull(event, "App ID");
                 appName = textOrNull(event, "App Name");
                 startTimeMillis = longOrNull(event, "Timestamp");
@@ -226,26 +244,11 @@ public final class SparkEventLogParser {
                             .updateDetails(
                                     textOrNull(stageInfo, "Stage Name"),
                                     intOrNull(stageInfo, "Number of Tasks"));
-                    if (isSuccessfulStageCompleted(stageInfo)) {
-                        completedStageIds.add(stageId);
-                        failedStageIds.remove(stageId);
-                        failedStages.remove(stageId);
-                        recordStageSqlAccumulatorValues(stageInfo, stageSqlExecutionIds, sqlExecutions);
-                    } else {
-                        completedStageIds.remove(stageId);
-                        failedStageIds.add(stageId);
-                        StageAccumulator stage =
-                                stageAttempts.computeIfAbsent(stageKey, key -> new StageAccumulator(key.stageId()));
-                        failedStages.put(
-                                stageId,
-                                new FailedStage(
-                                        stageId,
-                                        textOrNull(stageInfo, "Stage Name"),
-                                        textOrNull(stageInfo, "Failure Reason"),
-                                        stage.failedTaskAttempts(),
-                                        stage.failedTaskAttemptDurationMillis(),
-                                        stage.failedTaskAttemptReasons()));
-                    }
+                    stageCompletions.put(
+                            stageKey,
+                            new StageCompletion(stageInfo, isSuccessfulStageCompleted(stageInfo)));
+                    sqlAccumulatorUpdates.add(SqlAccumulatorUpdate.forStage(
+                            stageKey, stageSqlExecutionIds.get(stageId), stageInfo));
                 }
             } else if (TASK_END.equals(eventType)) {
                 Integer stageId = stageId(event, event.get("Stage Info"));
@@ -258,8 +261,15 @@ public final class SparkEventLogParser {
                 }
                 if (!isSuccessfulTaskEnd(event)) {
                     if (stageId != null) {
-                        stageAttempts.computeIfAbsent(stageKey(stageId, stageAttemptId), key -> new StageAccumulator(key.stageId()))
-                                .addFailedTaskAttempt(taskDurationMillis, taskEndReason(event));
+                        String failureReason = taskEndReason(event);
+                        stageAttempts
+                                .computeIfAbsent(
+                                        stageKey(stageId, stageAttemptId),
+                                        key -> new StageAccumulator(key.stageId()))
+                                .addFailedTaskAttempt(taskDurationMillis, failureReason);
+                        failedTaskAttemptTotals
+                                .computeIfAbsent(stageId, StageAccumulator::new)
+                                .addFailedTaskAttempt(taskDurationMillis, failureReason);
                     }
                     continue;
                 }
@@ -281,7 +291,7 @@ public final class SparkEventLogParser {
                 if (successfulTaskAttempts.containsKey(taskAttemptKey)) {
                     stage.addDuplicateSuccessfulTaskAttempt();
                 }
-                successfulTaskAttempts.put(
+                successfulTaskAttempts.putIfAbsent(
                         taskAttemptKey,
                         new ParsedTaskAttempt(
                                 stageId,
@@ -309,10 +319,14 @@ public final class SparkEventLogParser {
             } else if (isSqlEvent(eventType, SQL_DRIVER_ACCUM_UPDATES)) {
                 Long executionId = longOrNull(event, "executionId");
                 if (executionId != null) {
-                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new)
-                            .recordDriverAccumulatorUpdates(event);
+                    sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new);
+                    sqlAccumulatorUpdates.add(SqlAccumulatorUpdate.forDriver(executionId, event));
                 }
             }
+        }
+
+        if (recognizedEventCount == 0) {
+            throw new IOException(NO_RECOGNIZED_EVENTS_MESSAGE);
         }
 
         for (ParsedTaskAttempt taskAttempt : successfulTaskAttempts.values()) {
@@ -333,8 +347,41 @@ public final class SparkEventLogParser {
             }
         }
 
+        for (int stageId : stageIds) {
+            int latestStageAttemptId = latestStageAttemptIds.getOrDefault(stageId, 0);
+            StageKey latestStageKey = new StageKey(stageId, latestStageAttemptId);
+            StageCompletion completion = stageCompletions.get(latestStageKey);
+            if (completion == null) {
+                continue;
+            }
+            if (completion.successful()) {
+                completedStageIds.add(stageId);
+                continue;
+            }
+
+            failedStageIds.add(stageId);
+            StageAccumulator stage = stageAttempts.computeIfAbsent(
+                    latestStageKey, key -> new StageAccumulator(key.stageId()));
+            failedStages.put(
+                    stageId,
+                    new FailedStage(
+                            stageId,
+                            textOrNull(completion.stageInfo(), "Stage Name"),
+                            textOrNull(completion.stageInfo(), "Failure Reason"),
+                            stage.failedTaskAttempts(),
+                            stage.failedTaskAttemptDurationMillis(),
+                            stage.failedTaskAttemptReasons()));
+        }
+
+        replaySqlAccumulatorUpdates(
+                sqlAccumulatorUpdates,
+                stageCompletions,
+                latestStageAttemptIds,
+                sqlExecutions);
+
         List<StageAnalysis> stageAnalyses = stageIds.stream()
-                .map(stageId -> latestStageAttempt(stageAttempts, latestStageAttemptIds, stageId))
+                .map(stageId -> latestStageAttempt(
+                        stageAttempts, failedTaskAttemptTotals, latestStageAttemptIds, stageId))
                 .map(StageAccumulator::toStageAnalysis)
                 .toList();
         int analyzedTaskCount = successfulTaskIdsWithoutStage.size()
@@ -368,6 +415,7 @@ public final class SparkEventLogParser {
         List<FailedJob> failedJobDetails = List.copyOf(failedJobs.values());
         List<FailedStage> failedStageDetails = List.copyOf(failedStages.values());
         bottlenecks.addAll(failureDetector.detect(failedJobDetails, failedStageDetails));
+        List<Bottleneck> identifiedBottlenecks = identifyBottlenecks(bottlenecks);
 
         return new ParsedEventLog(
                 new ApplicationSummary(appId, appName, startTimeMillis, endTimeMillis),
@@ -379,27 +427,52 @@ public final class SparkEventLogParser {
                         completedStageIds.size(),
                         failedStageIds.size(),
                         analyzedTaskCount,
-                        bottlenecks.size()),
+                        identifiedBottlenecks.size()),
                 stageAnalyses,
                 sqlExecutionAnalyses,
                 failedJobDetails,
                 failedStageDetails,
-                bottlenecks,
-                recommendationEngine.recommend(bottlenecks));
+                identifiedBottlenecks,
+                recommendationEngine.recommend(identifiedBottlenecks));
+    }
+
+    private List<Bottleneck> identifyBottlenecks(List<Bottleneck> bottlenecks) {
+        List<Bottleneck> identified = new ArrayList<>();
+        for (int index = 0; index < bottlenecks.size(); index++) {
+            Bottleneck bottleneck = bottlenecks.get(index);
+            identified.add(new Bottleneck(
+                    bottleneck.type(),
+                    bottleneck.severity(),
+                    bottleneck.stageId(),
+                    bottleneck.message(),
+                    bottleneck.evidence(),
+                    "bottleneck-" + (index + 1)));
+        }
+        return List.copyOf(identified);
     }
 
     private void updateLatestStageAttemptId(Map<Integer, Integer> latestStageAttemptIds, int stageId, Integer stageAttemptId) {
-        latestStageAttemptIds.put(stageId, stageAttemptId == null ? 0 : stageAttemptId);
+        latestStageAttemptIds.merge(stageId, normalizedStageAttemptId(stageAttemptId), Math::max);
     }
 
     private StageKey stageKey(int stageId, Integer stageAttemptId) {
-        return new StageKey(stageId, stageAttemptId == null ? 0 : stageAttemptId);
+        return new StageKey(stageId, normalizedStageAttemptId(stageAttemptId));
+    }
+
+    private int normalizedStageAttemptId(Integer stageAttemptId) {
+        return stageAttemptId == null ? 0 : stageAttemptId;
     }
 
     private StageAccumulator latestStageAttempt(
-            Map<StageKey, StageAccumulator> stageAttempts, Map<Integer, Integer> latestStageAttemptIds, int stageId) {
+            Map<StageKey, StageAccumulator> stageAttempts,
+            Map<Integer, StageAccumulator> failedTaskAttemptTotals,
+            Map<Integer, Integer> latestStageAttemptIds,
+            int stageId) {
         int latestStageAttemptId = latestStageAttemptIds.getOrDefault(stageId, 0);
-        return stageAttempts.computeIfAbsent(new StageKey(stageId, latestStageAttemptId), key -> new StageAccumulator(key.stageId()));
+        StageAccumulator latestStageAttempt = stageAttempts.computeIfAbsent(
+                new StageKey(stageId, latestStageAttemptId), key -> new StageAccumulator(key.stageId()));
+        latestStageAttempt.replaceFailedTaskAttemptsWith(failedTaskAttemptTotals.get(stageId));
+        return latestStageAttempt;
     }
 
     private Set<Long> sqlExecutionIds(List<Bottleneck> bottlenecks, String bottleneckType) {
@@ -424,6 +497,20 @@ public final class SparkEventLogParser {
 
     private boolean isSqlEvent(String eventType, String sqlEventType) {
         return eventType.equals(sqlEventType) || eventType.endsWith("." + sqlEventType);
+    }
+
+    private boolean isRecognizedEvent(String eventType) {
+        return APPLICATION_START.equals(eventType)
+                || APPLICATION_END.equals(eventType)
+                || JOB_START.equals(eventType)
+                || JOB_END.equals(eventType)
+                || STAGE_SUBMITTED.equals(eventType)
+                || STAGE_COMPLETED.equals(eventType)
+                || TASK_END.equals(eventType)
+                || isSqlEvent(eventType, SQL_EXECUTION_START)
+                || isSqlEvent(eventType, SQL_ADAPTIVE_EXECUTION_UPDATE)
+                || isSqlEvent(eventType, SQL_EXECUTION_END)
+                || isSqlEvent(eventType, SQL_DRIVER_ACCUM_UPDATES);
     }
 
     private void recordStageSqlExecutionIds(JsonNode event, Map<Integer, Long> stageSqlExecutionIds) {
@@ -452,20 +539,39 @@ public final class SparkEventLogParser {
 
     private void recordStageSqlAccumulatorValues(
             JsonNode stageInfo,
-            Map<Integer, Long> stageSqlExecutionIds,
+            Long executionId,
             Map<Long, SqlExecutionAccumulator> sqlExecutions) {
-        Integer stageId = intOrNull(stageInfo, "Stage ID");
-        if (stageId == null) {
-            return;
-        }
-
-        Long executionId = stageSqlExecutionIds.get(stageId);
         if (executionId == null) {
             return;
         }
 
         sqlExecutions.computeIfAbsent(executionId, SqlExecutionAccumulator::new)
                 .recordSqlAccumulables(stageInfo.get("Accumulables"));
+    }
+
+    private void replaySqlAccumulatorUpdates(
+            List<SqlAccumulatorUpdate> updates,
+            Map<StageKey, StageCompletion> stageCompletions,
+            Map<Integer, Integer> latestStageAttemptIds,
+            Map<Long, SqlExecutionAccumulator> sqlExecutions) {
+        for (SqlAccumulatorUpdate update : updates) {
+            if (update.stageKey() == null) {
+                sqlExecutions.computeIfAbsent(update.executionId(), SqlExecutionAccumulator::new)
+                        .recordDriverAccumulatorUpdates(update.event());
+                continue;
+            }
+
+            StageKey stageKey = update.stageKey();
+            StageCompletion completion = stageCompletions.get(stageKey);
+            if (latestStageAttemptIds.getOrDefault(stageKey.stageId(), 0) != stageKey.stageAttemptId()
+                    || completion == null
+                    || !completion.successful()
+                    || completion.stageInfo() != update.event()) {
+                continue;
+            }
+            recordStageSqlAccumulatorValues(
+                    update.event(), update.executionId(), sqlExecutions);
+        }
     }
 
     private String textOrNull(JsonNode node, String fieldName) {
@@ -738,6 +844,19 @@ public final class SparkEventLogParser {
     private record TaskSpillMetrics(long memoryBytesSpilled, long diskBytesSpilled) {}
 
     private record StageKey(int stageId, int stageAttemptId) {}
+
+    private record StageCompletion(JsonNode stageInfo, boolean successful) {}
+
+    private record SqlAccumulatorUpdate(StageKey stageKey, Long executionId, JsonNode event) {
+        private static SqlAccumulatorUpdate forStage(
+                StageKey stageKey, Long executionId, JsonNode stageInfo) {
+            return new SqlAccumulatorUpdate(stageKey, executionId, stageInfo);
+        }
+
+        private static SqlAccumulatorUpdate forDriver(long executionId, JsonNode event) {
+            return new SqlAccumulatorUpdate(null, executionId, event);
+        }
+    }
 
     private record TaskAttemptKey(int stageId, int stageAttemptId, long taskIndex) {}
 

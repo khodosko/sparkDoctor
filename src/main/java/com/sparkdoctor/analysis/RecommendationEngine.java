@@ -10,6 +10,7 @@ public final class RecommendationEngine {
     public List<Recommendation> recommend(List<Bottleneck> bottlenecks) {
         List<Recommendation> recommendations = new ArrayList<>();
         for (Bottleneck bottleneck : bottlenecks) {
+            int firstRecommendationIndex = recommendations.size();
             if ("task_duration_skew".equals(bottleneck.type())) {
                 recommendations.add(taskDurationSkewRecommendation(bottleneck));
             } else if ("shuffle_partition_skew".equals(bottleneck.type())) {
@@ -45,9 +46,23 @@ public final class RecommendationEngine {
             } else if ("failed_stage".equals(bottleneck.type())) {
                 recommendations.add(failedStageRecommendation(bottleneck));
             }
+            for (int index = firstRecommendationIndex; index < recommendations.size(); index++) {
+                recommendations.set(index, withOrigin(recommendations.get(index), bottleneck));
+            }
         }
 
         return recommendations;
+    }
+
+    private Recommendation withOrigin(Recommendation recommendation, Bottleneck bottleneck) {
+        return new Recommendation(
+                recommendation.id(),
+                recommendation.severity(),
+                recommendation.title(),
+                recommendation.description(),
+                recommendation.relatedBottleneckType(),
+                recommendation.stageId(),
+                bottleneck.instanceId());
     }
 
     private Recommendation taskDurationSkewRecommendation(Bottleneck bottleneck) {

@@ -16,7 +16,7 @@ spark-submit \
 Then analyze the generated event log file or application directory:
 
 ```bash
-sparkdoctor analyze /tmp/spark-events/<application-event-log> --out ./sparkdoctor-report
+sparkdoctor analyze /tmp/spark-events/eventlog_v2_local-1234567890 --out ./sparkdoctor-report
 ```
 
 Spark's event-log directory is controlled by `spark.eventLog.dir`, and rolling event logs may create an application directory instead of one flat file.

@@ -68,6 +68,17 @@ final class StageAccumulator {
         }
     }
 
+    void replaceFailedTaskAttemptsWith(StageAccumulator totals) {
+        if (totals == null || totals == this) {
+            return;
+        }
+
+        failedTaskAttempts = totals.failedTaskAttempts;
+        failedTaskAttemptDurationMillis = totals.failedTaskAttemptDurationMillis;
+        failedTaskAttemptReasons.clear();
+        failedTaskAttemptReasons.addAll(totals.failedTaskAttemptReasons);
+    }
+
     void addSpeculativeTaskAttempt(Long durationMillis) {
         speculativeTaskAttempts++;
         if (durationMillis != null) {

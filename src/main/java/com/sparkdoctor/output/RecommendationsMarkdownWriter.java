@@ -93,6 +93,9 @@ public final class RecommendationsMarkdownWriter {
     }
 
     private boolean matchesRecommendation(Bottleneck bottleneck, Recommendation recommendation) {
+        if (recommendation.relatedBottleneckId() != null) {
+            return recommendation.relatedBottleneckId().equals(bottleneck.instanceId());
+        }
         return bottleneck.stageId() == recommendation.stageId()
                 && bottleneck.type().equals(recommendation.relatedBottleneckType());
     }

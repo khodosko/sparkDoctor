@@ -2,13 +2,23 @@ package com.sparkdoctor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparkdoctor.output.AnalysisJsonWriter;
+import com.sparkdoctor.output.RecommendationsMarkdownWriter;
+import com.sparkdoctor.output.SqlExecutionsMarkdownWriter;
+import com.sparkdoctor.output.SqlPlanDotWriter;
+import com.sparkdoctor.parser.SparkEventLogParser;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
@@ -22,7 +32,9 @@ final class AnalyzeCommandTest {
     @Test
     void analyzeAcceptsExistingEventLogPath() throws Exception {
         Path eventLog = tempDir.resolve("eventlog.json");
-        Files.writeString(eventLog, "{}\n");
+        Files.writeString(eventLog, """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """);
         StringWriter output = new StringWriter();
         CommandLine commandLine = new CommandLine(new AnalyzeCommand());
         commandLine.setOut(new PrintWriter(output, true));
@@ -44,6 +56,40 @@ final class AnalyzeCommandTest {
 
         assertEquals(2, exitCode);
         assertTrue(errorOutput.toString().contains("Event log path does not exist"));
+    }
+
+    @Test
+    void analyzeRejectsEmptyEventLog() throws Exception {
+        Path emptyEventLog = tempDir.resolve("empty-eventlog.json");
+        Files.writeString(emptyEventLog, "");
+        Path outputDirectory = tempDir.resolve("empty-report");
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(emptyEventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("does not contain any recognized Spark listener events"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
+    }
+
+    @Test
+    void analyzeRejectsJsonWithoutRecognizedSparkListenerEvents() throws Exception {
+        Path nonEventJson = tempDir.resolve("non-event.json");
+        Files.writeString(nonEventJson, "{}\n");
+        Path outputDirectory = tempDir.resolve("non-event-report");
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(nonEventJson.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("does not contain any recognized Spark listener events"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
     }
 
     @Test
@@ -76,6 +122,180 @@ final class AnalyzeCommandTest {
     }
 
     @Test
+    void analyzeRejectsManagedOutputArtifactAsInputWithoutDeletingIt() throws Exception {
+        Path outputDirectory = tempDir.resolve("overlapping-report");
+        Files.createDirectories(outputDirectory);
+        Path eventLog = outputDirectory.resolve("analysis.json");
+        String eventLogContents = """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """;
+        Files.writeString(eventLog, eventLogContents);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(2, exitCode);
+        assertTrue(errorOutput.toString().contains("must not be a managed report artifact"));
+        assertEquals(eventLogContents, Files.readString(eventLog));
+    }
+
+    @Test
+    void analyzeRejectsSymlinkedManagedOutputArtifactAsInputWithoutDeletingIt() throws Exception {
+        assumeFalse(System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win"));
+        Path eventLogTarget = tempDir.resolve("symlink-target-eventlog.json");
+        String eventLogContents = """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """;
+        Files.writeString(eventLogTarget, eventLogContents);
+        Path outputDirectory = tempDir.resolve("symlink-overlapping-report");
+        Files.createDirectories(outputDirectory);
+        Path eventLogLink = outputDirectory.resolve("analysis.json");
+        Files.createSymbolicLink(eventLogLink, eventLogTarget);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLogLink.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(2, exitCode);
+        assertTrue(errorOutput.toString().contains("must not be a managed report artifact"));
+        assertTrue(Files.exists(eventLogLink, LinkOption.NOFOLLOW_LINKS));
+        assertEquals(eventLogContents, Files.readString(eventLogTarget));
+    }
+
+    @Test
+    void analyzePreservesDirectoriesThatResembleManagedArtifacts() throws Exception {
+        Path invalidEventLog = tempDir.resolve("directory-lookalike-invalid-eventlog.json");
+        Files.writeString(invalidEventLog, "not json\n");
+        Path outputDirectory = tempDir.resolve("directory-lookalike-report");
+        Path analysisDirectory = outputDirectory.resolve("analysis.json");
+        Path dotDirectory = outputDirectory.resolve("sql-execution-0.dot");
+        Files.createDirectories(analysisDirectory);
+        Files.createDirectories(dotDirectory);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(invalidEventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(Files.isDirectory(analysisDirectory));
+        assertTrue(Files.isDirectory(dotDirectory));
+    }
+
+    @Test
+    void analyzeRefusesToReplaceDirectoryThatResemblesManagedArtifact() throws Exception {
+        Path eventLog = tempDir.resolve("directory-collision-eventlog.json");
+        Files.writeString(eventLog, """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """);
+        Path outputDirectory = tempDir.resolve("directory-collision-report");
+        Path analysisDirectory = outputDirectory.resolve("analysis.json");
+        Files.createDirectories(analysisDirectory);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("Refusing to replace directory"));
+        assertTrue(Files.isDirectory(analysisDirectory));
+        assertTrue(Files.notExists(outputDirectory.resolve("recommendations.md")));
+    }
+
+    @Test
+    void analyzeRejectsOutputDirectoryInsideDirectoryInput() throws Exception {
+        Path eventLogDirectory = tempDir.resolve("overlapping-event-log");
+        Files.createDirectories(eventLogDirectory);
+        Files.writeString(eventLogDirectory.resolve("events"), """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """);
+        Path outputDirectory = eventLogDirectory.resolve("report");
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(
+                eventLogDirectory.toString(),
+                "--out",
+                outputDirectory.toString());
+
+        assertEquals(2, exitCode);
+        assertTrue(errorOutput.toString().contains("must not be inside the event log input directory"));
+        assertTrue(Files.notExists(outputDirectory));
+    }
+
+    @Test
+    void analyzeRemovesManagedArtifactsWhenAWriterFailsAfterStagingBegins() throws Exception {
+        Path eventLog = tempDir.resolve("writer-failure-eventlog.json");
+        Files.writeString(eventLog, """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """);
+        Path outputDirectory = tempDir.resolve("writer-failure-report");
+        Files.createDirectories(outputDirectory);
+        Files.writeString(outputDirectory.resolve("keep.txt"), "preserve\n");
+        AnalyzeCommand command = new AnalyzeCommand(
+                new SparkEventLogParser(),
+                new AnalysisJsonWriter()::write,
+                (directory, report) -> {
+                    throw new IOException("injected recommendation writer failure");
+                },
+                new SqlExecutionsMarkdownWriter()::write,
+                new SqlPlanDotWriter()::write);
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(command);
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("injected recommendation writer failure"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
+        assertTrue(Files.notExists(outputDirectory.resolve("recommendations.md")));
+        assertEquals("preserve\n", Files.readString(outputDirectory.resolve("keep.txt")));
+    }
+
+    @Test
+    void analyzeRemovesAlreadyPromotedArtifactsWhenALaterMoveFails() throws Exception {
+        Path eventLog = tempDir.resolve("move-failure-eventlog.json");
+        Files.writeString(eventLog, """
+                {"Event":"SparkListenerApplicationStart","App Name":"minimal","App ID":"app-minimal","Timestamp":1}
+                """);
+        Path outputDirectory = tempDir.resolve("move-failure-report");
+        Files.createDirectories(outputDirectory);
+        Files.writeString(outputDirectory.resolve("keep.txt"), "preserve\n");
+        AtomicInteger moveCount = new AtomicInteger();
+        AnalyzeCommand command = new AnalyzeCommand(
+                new SparkEventLogParser(),
+                new AnalysisJsonWriter()::write,
+                new RecommendationsMarkdownWriter()::write,
+                new SqlExecutionsMarkdownWriter()::write,
+                new SqlPlanDotWriter()::write,
+                (source, destination) -> {
+                    if (moveCount.incrementAndGet() == 2) {
+                        throw new IOException("injected artifact promotion failure");
+                    }
+                    Files.move(source, destination);
+                });
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(command);
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLog.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertEquals(2, moveCount.get());
+        assertTrue(errorOutput.toString().contains("injected artifact promotion failure"));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
+        assertTrue(Files.notExists(outputDirectory.resolve("recommendations.md")));
+        assertEquals("preserve\n", Files.readString(outputDirectory.resolve("keep.txt")));
+    }
+
+    @Test
     void analyzeRejectsAmbiguousMultiApplicationDirectory() throws Exception {
         Path eventLogRoot = tempDir.resolve("eventlog-root");
         Path firstApplicationDirectory = eventLogRoot.resolve("eventlog_v2_local-123");
@@ -97,6 +317,29 @@ final class AnalyzeCommandTest {
         assertEquals(1, exitCode);
         assertTrue(errorOutput.toString().contains("multiple Spark application logs"));
         assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+    }
+
+    @Test
+    void analyzeRejectsMultipleApplicationStartsAcrossDirectEventLogFiles() throws Exception {
+        Path eventLogDirectory = tempDir.resolve("flat-eventlog-directory");
+        Files.createDirectories(eventLogDirectory);
+        Files.writeString(eventLogDirectory.resolve("events_1_app-first"), """
+                {"Event":"SparkListenerApplicationStart","App Name":"first","App ID":"app-first","Timestamp":1}
+                """);
+        Files.writeString(eventLogDirectory.resolve("events_2_app-second"), """
+                {"Event":"SparkListenerApplicationStart","App Name":"second","App ID":"app-second","Timestamp":2}
+                """);
+        Path outputDirectory = tempDir.resolve("flat-report");
+        StringWriter errorOutput = new StringWriter();
+        CommandLine commandLine = new CommandLine(new AnalyzeCommand());
+        commandLine.setErr(new PrintWriter(errorOutput, true));
+
+        int exitCode = commandLine.execute(eventLogDirectory.toString(), "--out", outputDirectory.toString());
+
+        assertEquals(1, exitCode);
+        assertTrue(errorOutput.toString().contains("multiple Spark application logs"));
+        assertTrue(errorOutput.toString().contains("No report artifacts were written."));
+        assertTrue(Files.notExists(outputDirectory.resolve("analysis.json")));
     }
 
     @Test

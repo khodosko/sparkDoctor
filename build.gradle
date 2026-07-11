@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.sparkdoctor"
-version = "0.1.4"
+version = providers.gradleProperty("sparkDoctorVersion").get()
 
 java {
     toolchain {
@@ -28,6 +28,8 @@ distributions {
             from("ROADMAP.md")
             from("docs") {
                 into "docs"
+                include("*.md")
+                includeEmptyDirs = false
             }
         }
     }
@@ -51,6 +53,13 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named("test") {
     useJUnitPlatform()
+}
+
+tasks.named("processResources") {
+    inputs.property("sparkDoctorVersion", project.version)
+    filesMatching("sparkdoctor-version.properties") {
+        expand(sparkDoctorVersion: project.version.toString())
+    }
 }
 
 tasks.named("wrapper") {

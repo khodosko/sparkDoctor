@@ -1,6 +1,6 @@
 # SparkDoctor
 
-Find skew, spills, wasted shuffle work, failed stages, and performance regressions from Spark event logs in seconds.
+Find skew, spills, wasted shuffle work, failed stages, and other performance bottlenecks from Spark event logs in seconds.
 
 SparkDoctor is an open-source, local-first CLI for analyzing Apache Spark event logs. It reads Spark listener events and turns raw execution metrics into bottlenecks, evidence, and recommendations without requiring a Spark History Server or hosted observability backend.
 
@@ -54,27 +54,31 @@ For help finding event logs from local Spark, Spark History Server, Databricks, 
 
 ## Install
 
+SparkDoctor release archives and source builds require Java 17. Confirm that Java 17 is active before continuing:
+
+```bash
+java -version
+```
+
 ### From A GitHub Release
 
 Download the latest release archive, unzip it, and run the CLI:
 
 ```bash
-curl -L -o sparkdoctor-0.1.4.zip https://github.com/khodosko/sparkDoctor/releases/download/v0.1.4/sparkdoctor-0.1.4.zip
-unzip sparkdoctor-0.1.4.zip
-./sparkdoctor-0.1.4/bin/sparkdoctor --help
+SPARKDOCTOR_VERSION=0.1.4
+curl -fL -o "sparkdoctor-${SPARKDOCTOR_VERSION}.zip" "https://github.com/khodosko/sparkDoctor/releases/download/v${SPARKDOCTOR_VERSION}/sparkdoctor-${SPARKDOCTOR_VERSION}.zip"
+unzip "sparkdoctor-${SPARKDOCTOR_VERSION}.zip"
+"./sparkdoctor-${SPARKDOCTOR_VERSION}/bin/sparkdoctor" --help
 ```
 
 Optionally add it to your shell:
 
 ```bash
-export PATH="$PWD/sparkdoctor-0.1.4/bin:$PATH"
+SPARKDOCTOR_VERSION=0.1.4
+export PATH="$PWD/sparkdoctor-${SPARKDOCTOR_VERSION}/bin:$PATH"
 ```
 
 ### Build From Source
-
-Requirements:
-
-- Java 17
 
 ```bash
 git clone https://github.com/khodosko/sparkDoctor.git
@@ -88,22 +92,18 @@ More development commands are in [docs/development.md](docs/development.md).
 
 ## Usage
 
+The following example assumes the `sparkdoctor` launcher is on `PATH`:
+
 Analyze a Spark event log:
 
 ```bash
 sparkdoctor analyze path/to/eventlog --out ./sparkdoctor-report
 ```
 
-Example with an included fixture:
+To analyze an included fixture, run the generated launcher from the root of a source checkout after `./gradlew installDist`:
 
 ```bash
-sparkdoctor analyze src/test/resources/fixtures/spill-heavy-eventlog.json --out ./sparkdoctor-report
-```
-
-If you have not added SparkDoctor to `PATH`, run the generated launcher directly:
-
-```bash
-./build/install/sparkdoctor/bin/sparkdoctor analyze path/to/eventlog --out ./sparkdoctor-report
+./build/install/sparkdoctor/bin/sparkdoctor analyze "$PWD/src/test/resources/fixtures/spill-heavy-eventlog.json" --out "$PWD/sparkdoctor-report"
 ```
 
 ## Example Output

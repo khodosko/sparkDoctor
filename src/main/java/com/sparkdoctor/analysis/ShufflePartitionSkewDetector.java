@@ -9,10 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 public final class ShufflePartitionSkewDetector {
-    private static final int MIN_SHUFFLE_READING_TASKS = 10;
-    private static final double SKEW_RATIO_THRESHOLD = 5.0;
-    private static final long SKEWED_PARTITION_THRESHOLD_BYTES = 256L * 1024L * 1024L;
-
     public List<Bottleneck> detect(List<StageAnalysis> stages) {
         List<Bottleneck> bottlenecks = new ArrayList<>();
         for (StageAnalysis stage : stages) {
@@ -29,7 +25,7 @@ public final class ShufflePartitionSkewDetector {
                                 "medianTaskShuffleReadBytes", stage.medianTaskShuffleReadBytes(),
                                 "maxTaskShuffleReadBytes", stage.maxTaskShuffleReadBytes(),
                                 "skewRatio", rounded(skewRatio),
-                                "thresholdBytes", SKEWED_PARTITION_THRESHOLD_BYTES)));
+                                "thresholdBytes", ShufflePartitionSkewPolicy.SKEWED_PARTITION_THRESHOLD_BYTES)));
             }
         }
 
@@ -37,20 +33,7 @@ public final class ShufflePartitionSkewDetector {
     }
 
     private boolean isSkewed(StageAnalysis stage) {
-        if (stage.taskShuffleReadBytes().size() < MIN_SHUFFLE_READING_TASKS) {
-            return false;
-        }
-        if (stage.medianTaskShuffleReadBytes() == null || stage.maxTaskShuffleReadBytes() == null) {
-            return false;
-        }
-        if (stage.medianTaskShuffleReadBytes() <= 0) {
-            return false;
-        }
-        if (stage.maxTaskShuffleReadBytes() <= SKEWED_PARTITION_THRESHOLD_BYTES) {
-            return false;
-        }
-
-        return stage.maxTaskShuffleReadBytes() > stage.medianTaskShuffleReadBytes() * SKEW_RATIO_THRESHOLD;
+        return ShufflePartitionSkewPolicy.qualifies(stage);
     }
 
     private double rounded(double value) {

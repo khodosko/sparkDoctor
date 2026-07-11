@@ -4,6 +4,15 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+- Corrected public OSS positioning, roadmap status, Java 17 prerequisites, wrapper commands, release installation, and source-checkout usage guidance.
+- Replaced the machine-specific Gradle Java path with a single `sparkDoctorVersion` property used by Gradle, the CLI, and additive `analysis.json` producer metadata.
+- Added release tag/version enforcement, archive content and embedded-version verification, public-only distribution filtering, and immutable GitHub Actions pins.
+- Hardened schema-version-1 documentation and contract tests for required types, nullability, public SQL fields, additive compatibility, and excluded internal plan state.
+- Added report-local bottleneck instance IDs and recommendation correlation IDs without renaming or removing existing schema-version-1 fields.
+- Rejected empty or non-event inputs, rejected multiple application starts, and selected the highest stage attempt even when older events arrive later.
+- Retained the first successful logical task metrics, aggregated failed-attempt evidence across stage attempts, and aligned oversized-shuffle suppression with shuffle-skew eligibility.
+- Staged report generation before promotion, rejected unsafe input/output overlap, and cleaned managed partial output after write failures while preserving unrelated files.
+- Added validated fixture sanitization for local paths, users, IDs, and private network addresses before atomically replacing the checked-in real Spark event log.
 - Added a top-level `schemaVersion` to `analysis.json` and documented the machine-readable output contract for downstream tooling.
 - Added fixture-backed contract tests for key `analysis.json` fields used by downstream consumers.
 - Suppressed broad duplicate SQL subtree findings when the same SQL execution already has a more specific possible missed exchange reuse finding.

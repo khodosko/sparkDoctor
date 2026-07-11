@@ -8,7 +8,7 @@ import picocli.CommandLine.Command;
 @Command(
         name = "sparkdoctor",
         mixinStandardHelpOptions = true,
-        version = "sparkDoctor 0.1.4",
+        versionProvider = SparkDoctorVersionProvider.class,
         description = "Analyze Spark event logs and generate local performance reports.",
         subcommands = {AnalyzeCommand.class})
 public final class SparkDoctorCli implements Callable<Integer> {

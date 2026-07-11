@@ -11,6 +11,16 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 work_dir="$(mktemp -d)"
 event_log_dir="$work_dir/spark-events"
 target="$repo_root/src/test/resources/fixtures/real-spark-eventlog.json"
+sanitized_target=""
+
+cleanup() {
+  rm -rf "$work_dir"
+  if [[ -n "$sanitized_target" ]]; then
+    rm -f "$sanitized_target"
+  fi
+}
+
+trap cleanup EXIT
 
 mkdir -p "$event_log_dir"
 
@@ -45,34 +55,27 @@ if [[ -z "$event_log" ]]; then
   exit 1
 fi
 
+raw_event_log="$work_dir/raw-eventlog.json"
 if file "$event_log" | grep -qi "Zstandard"; then
   if ! command -v zstd >/dev/null 2>&1; then
     echo "Spark generated a Zstandard-compressed event log, but zstd is not on PATH." >&2
     echo "Install zstd or configure Spark to write uncompressed event logs." >&2
     exit 1
   fi
-  zstd -dc "$event_log" > "$target"
+  zstd -dc "$event_log" > "$raw_event_log"
 else
-  cp "$event_log" "$target"
+  cp "$event_log" "$raw_event_log"
 fi
 
 echo "Copied Spark event log source: $event_log"
-python3 - "$target" "$repo_root" <<'PY'
-import re
-import sys
-from pathlib import Path
-
-target = Path(sys.argv[1])
-repo_root = sys.argv[2]
-content = target.read_text()
-content = content.replace(repo_root, "/tmp/sparkdoctor")
-content = re.sub(r"/Users/[^/\"',;:} ]+", "/tmp/sparkdoctor-user", content)
-content = re.sub(r"/var/folders/[^\"',;:} ]+", "/tmp/sparkdoctor-temp", content)
-content = re.sub(r"local-\d+", "local-sparkdoctor-fixture", content)
-content = re.sub(r'"User":"[^"]+"', '"User":"sparkdoctor-user"', content)
-content = re.sub(r"(?<![\w.-])10\.\d{1,3}\.\d{1,3}\.\d{1,3}(?![\w.-])", "127.0.0.1", content)
-content = re.sub(r"file:/var/folders/[^\",}]+", "file:/tmp/sparkdoctor-events", content)
-target.write_text(content)
-PY
+sanitized_target="$(mktemp "${target}.tmp.XXXXXX")"
+python3 "$repo_root/scripts/sanitize_real_spark_eventlog_fixture.py" \
+  --input "$raw_event_log" \
+  --output "$sanitized_target" \
+  --repo-root "$repo_root" \
+  --home-directory "${HOME:-}" \
+  --username "${USER:-}"
+mv "$sanitized_target" "$target"
+sanitized_target=""
 echo "Sanitized machine-specific paths and IDs in $target"
 echo "Wrote $target"

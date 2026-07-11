@@ -98,7 +98,7 @@ final class OversizedShufflePartitionDetectorTest {
     }
 
     @Test
-    void ignoresLikelyShuffleSkewToAvoidDuplicateFindings() {
+    void detectsOversizedPartitionsWhenSmallStageLooksSkewedButCannotQualifyForSkewFinding() {
         StageAnalysis stage = stage(
                 7,
                 10L * MIB,
@@ -108,7 +108,90 @@ final class OversizedShufflePartitionDetectorTest {
 
         List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
 
+        assertEquals(1, bottlenecks.size());
+        Bottleneck bottleneck = bottlenecks.get(0);
+        assertEquals("oversized_shuffle_partitions", bottleneck.type());
+        assertEquals("medium", bottleneck.severity());
+        assertEquals(7, bottleneck.stageId());
+        assertEquals(3, bottleneck.evidence().get("shuffleReadingTasks"));
+        assertEquals(10L * MIB, bottleneck.evidence().get("medianTaskShuffleReadBytes"));
+        assertEquals(300L * MIB, bottleneck.evidence().get("p95TaskShuffleReadBytes"));
+        assertEquals(300L * MIB, bottleneck.evidence().get("maxTaskShuffleReadBytes"));
+    }
+
+    @Test
+    void detectsSkewLikeOversizedPartitionsWithNineShuffleReadingTasks() {
+        StageAnalysis stage = stage(
+                7,
+                10L * MIB,
+                300L * MIB,
+                300L * MIB,
+                List.of(
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        300L * MIB));
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
+        assertEquals(1, bottlenecks.size());
+        assertEquals("oversized_shuffle_partitions", bottlenecks.get(0).type());
+        assertEquals(9, bottlenecks.get(0).evidence().get("shuffleReadingTasks"));
+    }
+
+    @Test
+    void ignoresSkewLikeOversizedPartitionsAtShuffleSkewTaskMinimum() {
+        StageAnalysis stage = stage(
+                7,
+                10L * MIB,
+                300L * MIB,
+                300L * MIB,
+                List.of(
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        300L * MIB));
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
         assertTrue(bottlenecks.isEmpty());
+    }
+
+    @Test
+    void detectsOversizedPartitionsAtShuffleSkewAbsoluteThreshold() {
+        StageAnalysis stage = stage(
+                7,
+                10L * MIB,
+                256L * MIB,
+                256L * MIB,
+                List.of(
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        10L * MIB,
+                        256L * MIB));
+
+        List<Bottleneck> bottlenecks = detector.detect(List.of(stage));
+
+        assertEquals(1, bottlenecks.size());
+        assertEquals("oversized_shuffle_partitions", bottlenecks.get(0).type());
+        assertEquals("medium", bottlenecks.get(0).severity());
     }
 
     private StageAnalysis stage(

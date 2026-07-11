@@ -10,6 +10,8 @@ sparkdoctor-report/
   sql-execution-0.dot  # only when structured SQL plan data is present
 ```
 
+SparkDoctor generates a successful report in a temporary staging directory before promoting its managed artifacts. If parsing or report generation fails, it removes managed SparkDoctor outputs while preserving unrelated files in the output directory; if filesystem permissions prevent cleanup, the CLI reports that explicitly. To protect event-log input, SparkDoctor rejects an output directory that is inside a directory input and rejects a file input that is also a managed output path.
+
 ## Example Terminal Output
 
 ```text
@@ -37,9 +39,15 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
 
 ## Example `analysis.json`
 
+This example is abridged for readability. Omitted fields are not necessarily optional; use the contract tables below to determine which fields are always present.
+
 ```json
 {
   "schemaVersion": "1",
+  "producer": {
+    "name": "SparkDoctor",
+    "version": "0.1.5-SNAPSHOT"
+  },
   "application": {
     "id": "app-spill-heavy-0001",
     "name": "spill_heavy_customer_etl",
@@ -71,10 +79,17 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
   "failedStages": [],
   "bottlenecks": [
     {
+      "instanceId": "bottleneck-1",
       "type": "spill_pressure",
       "severity": "medium",
       "stageId": 9,
-      "message": "Stage 9 has spill pressure."
+      "message": "Stage 9 has spill pressure.",
+      "evidence": {
+        "completedTasks": 2,
+        "memoryBytesSpilled": 134217728,
+        "diskBytesSpilled": 314572800,
+        "maxTaskDiskBytesSpilled": 209715200
+      }
     }
   ],
   "recommendations": [
@@ -83,6 +98,7 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
       "severity": "medium",
       "title": "Reduce spill pressure",
       "relatedBottleneckType": "spill_pressure",
+      "relatedBottleneckId": "bottleneck-1",
       "stageId": 9
     }
   ]
@@ -93,18 +109,109 @@ Recommendations Markdown: ./sparkdoctor-report/recommendations.md
 
 `analysis.json` is SparkDoctor's machine-readable output contract. It is intended for scripts, CI checks, and downstream tools that need stable Spark analysis evidence without parsing terminal or Markdown output.
 
-The top-level `schemaVersion` field identifies the contract version. Additive fields may be introduced within the same schema version, but existing key fields should not be renamed, removed, or have their meaning changed casually. If a future change needs to alter existing field names or semantics, it should use a new schema version.
+The top-level `schemaVersion` field identifies the contract version and is a JSON string. Schema version `"1"` follows these compatibility rules:
 
-Important stable fields include:
+- Existing stable fields are not renamed, removed, or given incompatible semantics within schema version 1.
+- New top-level fields, nested fields, detector types, and detector-specific `evidence` fields may be added within schema version 1.
+- Consumers must ignore unknown fields and unknown detector types rather than rejecting an otherwise valid report.
+- A change that removes a stable field or changes its type or meaning requires deliberate schema-version and downstream-compatibility consideration.
 
-- `application.id`, `application.name`, and `application.durationMillis`
-- `summary.jobs`, `summary.jobsCompleted`, `summary.jobsFailed`
-- `summary.stages`, `summary.stagesCompleted`, `summary.stagesFailed`
-- `summary.tasks` and `summary.issuesDetected`
-- `stages[*].id`, `stages[*].name`, completed task counts, task duration summaries, shuffle totals, and spill totals
-- `failedJobs` and `failedStages`
-- `bottlenecks[*].type`, `bottlenecks[*].severity`, `bottlenecks[*].stageId`, and `bottlenecks[*].evidence`
-- `recommendations[*].id`, `recommendations[*].severity`, `recommendations[*].relatedBottleneckType`, and `recommendations[*].stageId`
+### Current Emitter Shape
+
+Current SparkDoctor builds emit these keys. Arrays are present even when empty.
+
+| Field | JSON type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `schemaVersion` | string | no | Public analysis contract version; currently `"1"`. |
+| `producer` | object | no | SparkDoctor producer identity and executable version. |
+| `application` | object | no | Application identity and timing. |
+| `summary` | object | no | Application-level counts. |
+| `stages` | array | no | Selected stage-attempt analyses. |
+| `sqlExecutions` | array | no | SQL execution summaries. |
+| `failedJobs` | array | no | Failed job summaries. |
+| `failedStages` | array | no | Failed stage summaries. |
+| `bottlenecks` | array | no | Detector findings and evidence. |
+| `recommendations` | array | no | Recommended actions derived from findings. |
+
+The additive `producer` object was introduced after the `0.1.4` release. Historical schema-version-1 reports can omit it, so consumers that accept schema 1 must tolerate its absence. Current SparkDoctor contract tests require it from the current emitter.
+
+All other fields described below are emitted as keys unless an additive-field compatibility note says otherwise. A field marked nullable remains present with a JSON `null` value when the event log does not provide enough information.
+
+`producer.name` and `producer.version` are non-null strings. `producer.name` is `"SparkDoctor"`; `producer.version` identifies the SparkDoctor executable that produced the report. Producer version and schema version are independent: an executable release can change without changing the compatible schema-1 contract.
+
+### Application And Summary
+
+`application` has the following stable fields:
+
+| Field | JSON type | Nullable |
+| --- | --- | --- |
+| `id` | string | yes |
+| `name` | string | yes |
+| `startTimeMillis` | integer | yes |
+| `endTimeMillis` | integer | yes |
+| `durationMillis` | integer | yes |
+
+`durationMillis` is available only when both application start and end timestamps are available.
+
+Every `summary` field is a non-null JSON integer:
+
+- `jobs`, `jobsCompleted`, and `jobsFailed`
+- `stages`, `stagesCompleted`, and `stagesFailed`
+- `tasks` and `issuesDetected`
+
+`summary.tasks` counts successful logical tasks selected for analysis. For a stage, SparkDoctor selects the highest observed stage-attempt ID and deduplicates successful attempts by logical task index; failed attempts and successful tasks from superseded stage attempts are not added to this count. Successful task events that lack stage/index information are counted by distinct task ID. Failed retry work is represented separately by stage failed-attempt fields and detector evidence when available.
+
+### Stage Analyses
+
+Each object in `stages` has a non-null integer `id`. `name` is a nullable string and `taskCount` is a nullable integer because either can be absent from the event log.
+
+Successful task duration, shuffle, spill, speculation, duplicate-attempt, and worker metrics come from the highest observed attempt for that stage. Stage completion/failure counts and failed-stage details also use that highest attempt rather than event arrival order. When more than one successful task event has the same logical task index in the selected attempt, SparkDoctor retains the first success for task metrics and records later successes in `duplicateSuccessfulTaskAttempts`. Failed-task-attempt counts, durations, and reasons in stage analysis aggregate failed work across all observed attempts for the stage.
+
+The following stage fields are always non-null integers:
+
+- `completedTasks`
+- `failedTaskAttempts` and `failedTaskAttemptDurationMillis`
+- `speculativeTaskAttempts` and `speculativeTaskAttemptDurationMillis`
+- `duplicateSuccessfulTaskAttempts`
+- `shuffleReadBytes`, `memoryBytesSpilled`, and `diskBytesSpilled`
+
+Task-duration summary fields and per-task shuffle/spill maximum and percentile fields are nullable integers when no usable samples exist. The corresponding sample arrays, `taskDurationMillis`, `taskShuffleReadBytes`, `taskMemoryBytesSpilled`, and `taskDiskBytesSpilled`, are always present and contain integers. `failedTaskAttemptReasons` is always present and contains strings.
+
+`executorSummaries` and `hostSummaries` are always-present arrays. Each worker summary has a string `id`, integer `taskCount` and `taskDurationMillis`, and numeric `taskShare` and `durationShare`.
+
+### SQL Executions And Failures
+
+Each object in `sqlExecutions` has these public fields:
+
+| Field | JSON type | Nullable |
+| --- | --- | --- |
+| `id` | integer | no |
+| `rootExecutionId` | integer | yes |
+| `description` | string | yes |
+| `details` | string | yes |
+| `startTimeMillis` | integer | yes |
+| `endTimeMillis` | integer | yes |
+| `durationMillis` | integer | yes |
+| `physicalPlanDescription` | string | yes |
+| `latestPhysicalPlanDescription` | string | yes |
+| `errorMessage` | string | yes |
+| `operatorSummaries` | array | no |
+
+Each operator summary contains a non-null string `name` and a non-null integer `count`. Raw Spark plan trees and derived plan internals are deliberately excluded from `analysis.json`: `sparkPlanInfo`, `latestSparkPlanInfo`, `planRoot`, `latestPlanRoot`, and `sqlMetricValues` are not public JSON fields. The physical-plan description strings and operator summaries remain public.
+
+Each `failedJobs` object contains a non-null integer `id` and nullable string `result`. Each `failedStages` object contains a non-null integer `id`, nullable strings `name` and `failureReason`, non-null integer `failedTaskAttempts` and `failedTaskAttemptDurationMillis`, and an always-present string array `failedTaskAttemptReasons`.
+
+### Findings And Recommendations
+
+Each current-emitter `bottlenecks` object contains non-null `instanceId`, `type`, `severity`, and `message` strings, a non-null integer `stageId`, and a non-null `evidence` object. `instanceId` uniquely identifies that finding within one report. Evidence keys and value types are detector-specific. New evidence keys may be added within schema version 1, so consumers should read only the keys they understand and ignore the rest.
+
+Each current-emitter `recommendations` object contains non-null `id`, `severity`, `title`, `description`, `relatedBottleneckType`, and `relatedBottleneckId` strings plus a non-null integer `stageId`. `relatedBottleneckId` references the corresponding `bottlenecks[*].instanceId` in the same report.
+
+`instanceId` and `relatedBottleneckId` were introduced together after the `0.1.4` release. Historical schema-version-1 reports can omit both fields. Consumers should use the IDs when present; when reading older reports, they may fall back to `relatedBottleneckType` plus `stageId`, recognizing that repeated findings with the same type and scope cannot be correlated unambiguously.
+
+`stageId: -1` means the finding or recommendation applies at application or SQL-execution scope rather than to a Spark stage. Recommendation `id` identifies an action category, not a unique finding instance; the same ID can occur more than once in one report. Use `relatedBottleneckId` for within-report correlation instead of matching only by recommendation ID, bottleneck type, or stage ID.
+
+Array order and JSON object-property order are not contractually guaranteed. Consumers should locate records by their documented fields, tolerate multiple records with the same type or recommendation ID, and avoid treating current serialization order as identity or priority. A bottleneck `instanceId` is scoped to one report and is not a stable cross-run identifier.
 
 ## How To Read The Output
 
@@ -125,8 +232,9 @@ To render a DOT graph as SVG with Graphviz:
 
 ```bash
 dot -Tsvg sparkdoctor-report/sql-execution-0.dot -o sparkdoctor-report/sql-execution-0.svg
-open sparkdoctor-report/sql-execution-0.svg
 ```
+
+Open the generated SVG with the viewer available on your platform.
 
 Use `analysis.json` when you want the raw evidence:
 

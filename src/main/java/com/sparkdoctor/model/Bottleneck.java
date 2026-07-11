@@ -7,5 +7,14 @@ public record Bottleneck(
         String severity,
         int stageId,
         String message,
-        Map<String, Object> evidence) {}
-
+        Map<String, Object> evidence,
+        String instanceId) {
+    public Bottleneck(
+            String type,
+            String severity,
+            int stageId,
+            String message,
+            Map<String, Object> evidence) {
+        this(type, severity, stageId, message, evidence, null);
+    }
+}

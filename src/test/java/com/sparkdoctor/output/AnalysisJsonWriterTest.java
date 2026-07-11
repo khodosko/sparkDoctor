@@ -97,6 +97,10 @@ final class AnalysisJsonWriterTest {
 
         JsonNode json = objectMapper.readTree(analysisPath.toFile());
         assertEquals("1", json.path("schemaVersion").asText());
+        assertEquals("SparkDoctor", json.path("producer").path("name").asText());
+        assertEquals(
+                com.sparkdoctor.SparkDoctorVersion.current(),
+                json.path("producer").path("version").asText());
         assertEquals("app-1", json.path("application").path("id").asText());
         assertEquals("daily_job", json.path("application").path("name").asText());
         assertEquals(1500L, json.path("application").path("durationMillis").asLong());
@@ -167,6 +171,7 @@ final class AnalysisJsonWriterTest {
         assertEquals("task_duration_skew", json.path("bottlenecks").get(0).path("type").asText());
         assertEquals("medium", json.path("bottlenecks").get(0).path("severity").asText());
         assertEquals(4, json.path("bottlenecks").get(0).path("stageId").asInt());
+        assertEquals("bottleneck-1", json.path("bottlenecks").get(0).path("instanceId").asText());
         assertEquals(3.0, json.path("bottlenecks").get(0).path("evidence").path("skewRatio").asDouble());
         assertEquals("investigate-task-duration-skew", json.path("recommendations").get(0).path("id").asText());
         assertEquals("medium", json.path("recommendations").get(0).path("severity").asText());
@@ -175,5 +180,8 @@ final class AnalysisJsonWriterTest {
                 "task_duration_skew",
                 json.path("recommendations").get(0).path("relatedBottleneckType").asText());
         assertEquals(4, json.path("recommendations").get(0).path("stageId").asInt());
+        assertEquals(
+                "bottleneck-1",
+                json.path("recommendations").get(0).path("relatedBottleneckId").asText());
     }
 }
