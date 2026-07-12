@@ -46,7 +46,7 @@ This example is abridged for readability. Omitted fields are not necessarily opt
   "schemaVersion": "1",
   "producer": {
     "name": "SparkDoctor",
-    "version": "0.1.5-SNAPSHOT"
+    "version": "0.1.5"
   },
   "application": {
     "id": "app-spill-heavy-0001",

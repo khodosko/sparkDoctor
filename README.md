@@ -65,7 +65,7 @@ java -version
 Download the latest release archive, unzip it, and run the CLI:
 
 ```bash
-SPARKDOCTOR_VERSION=0.1.4
+SPARKDOCTOR_VERSION=0.1.5
 curl -fL -o "sparkdoctor-${SPARKDOCTOR_VERSION}.zip" "https://github.com/khodosko/sparkDoctor/releases/download/v${SPARKDOCTOR_VERSION}/sparkdoctor-${SPARKDOCTOR_VERSION}.zip"
 unzip "sparkdoctor-${SPARKDOCTOR_VERSION}.zip"
 "./sparkdoctor-${SPARKDOCTOR_VERSION}/bin/sparkdoctor" --help
@@ -74,7 +74,7 @@ unzip "sparkdoctor-${SPARKDOCTOR_VERSION}.zip"
 Optionally add it to your shell:
 
 ```bash
-SPARKDOCTOR_VERSION=0.1.4
+SPARKDOCTOR_VERSION=0.1.5
 export PATH="$PWD/sparkdoctor-${SPARKDOCTOR_VERSION}/bin:$PATH"
 ```
 

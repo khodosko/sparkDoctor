@@ -4,6 +4,8 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+## 0.1.5 - 2026-07-11
+
 - Corrected public OSS positioning, roadmap status, Java 17 prerequisites, wrapper commands, release installation, and source-checkout usage guidance.
 - Replaced the machine-specific Gradle Java path with a single `sparkDoctorVersion` property used by Gradle, the CLI, and additive `analysis.json` producer metadata.
 - Added release tag/version enforcement, archive content and embedded-version verification, public-only distribution filtering, and immutable GitHub Actions pins.
