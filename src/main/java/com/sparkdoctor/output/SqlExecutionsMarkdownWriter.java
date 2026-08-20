@@ -64,14 +64,10 @@ public final class SqlExecutionsMarkdownWriter {
                         .append("`\n");
             }
             markdown.append("\n");
+            appendTextBlock(markdown, "Error", sqlExecution.errorMessage());
             appendOperatorSummary(markdown, sqlExecution);
             appendRepeatedSubtrees(markdown, sqlExecution);
-            if (hasText(sqlExecution.details())) {
-                markdown.append("### Details\n\n");
-                markdown.append("```text\n");
-                markdown.append(sqlExecution.details()).append("\n");
-                markdown.append("```\n\n");
-            }
+            appendTextBlock(markdown, "Details", sqlExecution.details());
             appendPlan(markdown, "Initial Physical Plan", sqlExecution.physicalPlanDescription());
             appendPlan(markdown, "Latest Physical Plan", sqlExecution.latestPhysicalPlanDescription());
         }
@@ -143,17 +139,36 @@ public final class SqlExecutionsMarkdownWriter {
     }
 
     private void appendPlan(StringBuilder markdown, String title, String plan) {
-        if (!hasText(plan)) {
+        appendTextBlock(markdown, title, plan);
+    }
+
+    private void appendTextBlock(StringBuilder markdown, String title, String value) {
+        if (!hasText(value)) {
             return;
         }
 
         markdown.append("### ").append(title).append("\n\n");
-        markdown.append("```text\n");
-        markdown.append(plan);
-        if (!plan.endsWith("\n")) {
+        String fence = codeFence(value);
+        markdown.append(fence).append("text\n");
+        markdown.append(value);
+        if (!value.endsWith("\n")) {
             markdown.append("\n");
         }
-        markdown.append("```\n\n");
+        markdown.append(fence).append("\n\n");
+    }
+
+    private String codeFence(String value) {
+        int longestRun = 0;
+        int currentRun = 0;
+        for (int index = 0; index < value.length(); index++) {
+            if (value.charAt(index) == '`') {
+                currentRun++;
+                longestRun = Math.max(longestRun, currentRun);
+            } else {
+                currentRun = 0;
+            }
+        }
+        return "`".repeat(Math.max(3, longestRun + 1));
     }
 
     private String status(SqlExecution sqlExecution) {

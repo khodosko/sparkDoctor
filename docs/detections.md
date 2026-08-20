@@ -1,6 +1,10 @@
 # SparkDoctor Detections
 
 SparkDoctor parses Spark listener events and builds stage-level metrics from successful task attempts.
+Successful logical tasks are counted even when an event omits launch or finish timestamps. Duration
+aggregates use tasks with usable duration samples. Duration-based detectors stay silent for a stage when
+one or more selected successful tasks lack a usable duration, avoiding conclusions from an incomplete
+distribution.
 
 Use it as a Spark event log performance analyzer for offline Spark troubleshooting, Spark shuffle skew detection, Spark spill analysis, and Spark task skew diagnostics.
 
@@ -48,6 +52,10 @@ Current summary and stage metrics include:
 - per-task memory and disk spill distributions
 
 Failed task attempts do not contribute to successful duration, shuffle, spill, or worker metrics. Their count, duration, and unique reasons are aggregated across all attempts of a stage for retry-waste analysis. Successful metrics, terminal completion state, and failed-stage details come from the highest observed stage attempt ID. Successful task attempts within that stage attempt are deduplicated by task index. When more than one successful attempt exists for an index in the selected stage attempt, SparkDoctor retains the first success while still counting duplicate successes and all successful speculative attempts for that selected attempt.
+
+SparkDoctor retains a stage ID when it appears in a stage submission, stage completion, or task-end event.
+This allows partial logs with task events to retain stage/task consistency, although stage names, declared task
+counts, and terminal completion state remain unavailable when their stage events are missing.
 
 ## Current Bottleneck Rules
 

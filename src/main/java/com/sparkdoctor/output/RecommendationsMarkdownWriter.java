@@ -4,6 +4,7 @@ import com.sparkdoctor.model.AnalysisReport;
 import com.sparkdoctor.model.Bottleneck;
 import com.sparkdoctor.model.Recommendation;
 import com.sparkdoctor.model.StageAnalysis;
+import com.sparkdoctor.util.BottleneckScope;
 import com.sparkdoctor.util.HumanReadableFormat;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -54,10 +55,13 @@ public final class RecommendationsMarkdownWriter {
 
         markdown.append("## Recommendations\n\n");
         for (Recommendation recommendation : report.recommendations()) {
+            Bottleneck relatedBottleneck = relatedBottleneck(recommendation, report);
             markdown.append("### ").append(recommendation.title()).append("\n\n");
             markdown.append("- Severity: ").append(recommendation.severity()).append("\n");
             if (recommendation.stageId() < 0) {
-                markdown.append("- Scope: application\n");
+                markdown.append("- Scope: ")
+                        .append(BottleneckScope.display(relatedBottleneck))
+                        .append("\n");
             } else {
                 markdown.append("- Stage ID: ").append(recommendation.stageId()).append("\n");
             }
@@ -90,6 +94,14 @@ public final class RecommendationsMarkdownWriter {
             markdown.append("\n");
             return;
         }
+    }
+
+    private Bottleneck relatedBottleneck(Recommendation recommendation, AnalysisReport report) {
+        return report.bottlenecks().stream()
+                .filter(bottleneck -> matchesRecommendation(bottleneck, recommendation))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Recommendation does not match a bottleneck in this report: " + recommendation.id()));
     }
 
     private boolean matchesRecommendation(Bottleneck bottleneck, Recommendation recommendation) {

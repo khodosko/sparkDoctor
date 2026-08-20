@@ -46,8 +46,11 @@ final class StageAccumulator {
         this.taskCount = taskCount;
     }
 
-    void addTaskDuration(long durationMillis) {
+    void addSuccessfulTask() {
         completedTasks++;
+    }
+
+    void addTaskDuration(long durationMillis) {
         totalTaskDurationMillis += durationMillis;
         taskDurationMillis.add(durationMillis);
         minTaskDurationMillis = minTaskDurationMillis == null
@@ -124,7 +127,9 @@ final class StageAccumulator {
     }
 
     StageAnalysis toStageAnalysis() {
-        Long avgTaskDurationMillis = completedTasks == 0 ? null : totalTaskDurationMillis / completedTasks;
+        Long avgTaskDurationMillis = taskDurationMillis.isEmpty()
+                ? null
+                : totalTaskDurationMillis / taskDurationMillis.size();
         List<Long> sortedTaskDurationMillis = taskDurationMillis.stream()
                 .sorted(Comparator.naturalOrder())
                 .toList();

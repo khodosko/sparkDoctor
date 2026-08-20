@@ -4,6 +4,10 @@ All notable changes to SparkDoctor will be documented in this file.
 
 ## Unreleased
 
+- Count successful logical tasks independently from optional duration metrics and retain stages discovered from task events in partial event logs.
+- Prioritize high-severity findings in the terminal bottleneck summary and label SQL-scoped findings with their SQL execution ID.
+- Include SQL execution error messages in `sql-executions.md` and use safe Markdown code fences for event-log text blocks.
+
 ## 0.1.5 - 2026-07-11
 
 - Corrected public OSS positioning, roadmap status, Java 17 prerequisites, wrapper commands, release installation, and source-checkout usage guidance.

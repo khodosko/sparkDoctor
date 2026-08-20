@@ -257,6 +257,7 @@ public final class SparkEventLogParser {
                 Long taskId = taskId(event);
                 Long taskDurationMillis = taskDurationMillis(event);
                 if (stageId != null) {
+                    stageIds.add(stageId);
                     updateLatestStageAttemptId(latestStageAttemptIds, stageId, stageAttemptId);
                 }
                 if (!isSuccessfulTaskEnd(event)) {
@@ -333,6 +334,7 @@ public final class SparkEventLogParser {
             StageAccumulator stage = stageAttempts.computeIfAbsent(
                     new StageKey(taskAttempt.stageId(), taskAttempt.stageAttemptId()),
                     key -> new StageAccumulator(key.stageId()));
+            stage.addSuccessfulTask();
             if (taskAttempt.taskDurationMillis() != null) {
                 stage.addTaskDuration(taskAttempt.taskDurationMillis());
             }
@@ -392,14 +394,17 @@ public final class SparkEventLogParser {
                         .count();
         List<SqlExecution> sqlExecutionAnalyses =
                 sqlExecutions.values().stream().map(SqlExecutionAccumulator::toSqlExecution).toList();
+        List<StageAnalysis> stagesWithCompleteDurationMetrics = stageAnalyses.stream()
+                .filter(stage -> stage.taskDurationMillis().size() == stage.completedTasks())
+                .toList();
         List<Bottleneck> bottlenecks = new ArrayList<>();
-        bottlenecks.addAll(taskDurationSkewDetector.detect(stageAnalyses));
+        bottlenecks.addAll(taskDurationSkewDetector.detect(stagesWithCompleteDurationMetrics));
         bottlenecks.addAll(shufflePartitionSkewDetector.detect(stageAnalyses));
         bottlenecks.addAll(oversizedShufflePartitionDetector.detect(stageAnalyses));
         bottlenecks.addAll(lowShuffleParallelismDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillPressureDetector.detect(stageAnalyses));
         bottlenecks.addAll(spillSkewDetector.detect(stageAnalyses));
-        bottlenecks.addAll(tinyTaskDetector.detect(stageAnalyses));
+        bottlenecks.addAll(tinyTaskDetector.detect(stagesWithCompleteDurationMetrics));
         bottlenecks.addAll(retryWasteDetector.detect(stageAnalyses));
         bottlenecks.addAll(speculationDetector.detect(stageAnalyses));
         bottlenecks.addAll(workerImbalanceDetector.detect(stageAnalyses));

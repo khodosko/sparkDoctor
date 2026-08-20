@@ -9,6 +9,7 @@ import com.sparkdoctor.output.RecommendationsMarkdownWriter;
 import com.sparkdoctor.output.SqlExecutionsMarkdownWriter;
 import com.sparkdoctor.output.SqlPlanDotWriter;
 import com.sparkdoctor.parser.SparkEventLogParser;
+import com.sparkdoctor.util.BottleneckScope;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -182,13 +183,12 @@ public final class AnalyzeCommand implements Callable<Integer> {
         out.printf("Recommendations: %d%n", parsedEventLog.recommendations().size());
         if (!parsedEventLog.bottlenecks().isEmpty()) {
             out.println("Top bottlenecks:");
-            parsedEventLog.bottlenecks().stream()
-                    .limit(3)
+            topBottlenecks(parsedEventLog.bottlenecks()).stream()
                     .forEach(bottleneck -> out.printf(
                             "- [%s] %s (%s): %s%n",
                             bottleneck.severity(),
                             bottleneck.type(),
-                            bottleneckLocation(bottleneck.stageId()),
+                            BottleneckScope.display(bottleneck),
                             bottleneck.message()));
         }
         out.printf("Output directory: %s%n", outputDirectory);
@@ -212,8 +212,20 @@ public final class AnalyzeCommand implements Callable<Integer> {
         return value;
     }
 
-    private String bottleneckLocation(int stageId) {
-        return stageId < 0 ? "application" : "stage " + stageId;
+    static List<Bottleneck> topBottlenecks(List<Bottleneck> bottlenecks) {
+        return bottlenecks.stream()
+                .sorted(Comparator.comparingInt(AnalyzeCommand::severityRank))
+                .limit(3)
+                .toList();
+    }
+
+    private static int severityRank(Bottleneck bottleneck) {
+        return switch (bottleneck.severity()) {
+            case "high" -> 0;
+            case "medium" -> 1;
+            case "low" -> 2;
+            default -> 3;
+        };
     }
 
     private String severitySummary(List<Bottleneck> bottlenecks) {

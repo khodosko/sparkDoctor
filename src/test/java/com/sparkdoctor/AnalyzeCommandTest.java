@@ -965,7 +965,7 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Issues detected: 1"));
         assertTrue(output.toString().contains("Recommendations: 1"));
         assertTrue(output.toString().contains(
-                "- [medium] sql_many_exchanges (application): SQL execution 9 has many exchange operators."));
+                "- [medium] sql_many_exchanges (SQL execution 9): SQL execution 9 has many exchange operators."));
         assertTrue(output.toString()
                 .contains("SQL Executions Markdown: " + outputDirectory.resolve("sql-executions.md")));
 
@@ -983,7 +983,7 @@ final class AnalyzeCommandTest {
 
         String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
         assertTrue(recommendationsMarkdown.contains("### Investigate SQL plan exchanges"));
-        assertTrue(recommendationsMarkdown.contains("- Scope: application"));
+        assertTrue(recommendationsMarkdown.contains("- Scope: SQL execution 9"));
         assertTrue(recommendationsMarkdown.contains("- Related bottleneck: sql_many_exchanges"));
         String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));
         assertTrue(sqlExecutionsMarkdown.contains("### Operator Summary"));
@@ -1008,7 +1008,7 @@ final class AnalyzeCommandTest {
         assertTrue(output.toString().contains("Issues detected: 1"));
         assertTrue(output.toString().contains("Recommendations: 1"));
         assertTrue(output.toString().contains(
-                "- [medium] possible_missed_exchange_reuse (application): SQL execution 21 has repeated exchange-like physical plan subtrees."));
+                "- [medium] possible_missed_exchange_reuse (SQL execution 21): SQL execution 21 has repeated exchange-like physical plan subtrees."));
 
         JsonNode json = objectMapper.readTree(outputDirectory.resolve("analysis.json").toFile());
         assertEquals(1, json.path("sqlExecutions").size());
@@ -1030,7 +1030,7 @@ final class AnalyzeCommandTest {
 
         String recommendationsMarkdown = Files.readString(outputDirectory.resolve("recommendations.md"));
         assertTrue(recommendationsMarkdown.contains("### Investigate possible missed exchange reuse"));
-        assertTrue(recommendationsMarkdown.contains("- Scope: application"));
+        assertTrue(recommendationsMarkdown.contains("- Scope: SQL execution 21"));
         assertTrue(recommendationsMarkdown.contains("- confidence: low"));
         assertTrue(recommendationsMarkdown.contains("- topDuplicateRoot: Exchange"));
         String sqlExecutionsMarkdown = Files.readString(outputDirectory.resolve("sql-executions.md"));

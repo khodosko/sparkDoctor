@@ -192,7 +192,7 @@ final class RecommendationsMarkdownWriterTest {
         Path recommendationsPath = writer.write(outputDirectory, report);
 
         String markdown = Files.readString(recommendationsPath);
-        assertTrue(markdown.contains("- Scope: application"));
+        assertTrue(markdown.contains("- Scope: SQL execution 3"));
         assertTrue(markdown.contains("- duplicateGroups: 2"));
         assertTrue(markdown.contains("- sqlExecutionId: 3"));
         assertTrue(markdown.contains("- topDuplicateInterestingOperators: Exchange, HashAggregate"));

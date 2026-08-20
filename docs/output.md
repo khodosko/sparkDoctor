@@ -167,6 +167,12 @@ Each object in `stages` has a non-null integer `id`. `name` is a nullable string
 
 Successful task duration, shuffle, spill, speculation, duplicate-attempt, and worker metrics come from the highest observed attempt for that stage. Stage completion/failure counts and failed-stage details also use that highest attempt rather than event arrival order. When more than one successful task event has the same logical task index in the selected attempt, SparkDoctor retains the first success for task metrics and records later successes in `duplicateSuccessfulTaskAttempts`. Failed-task-attempt counts, durations, and reasons in stage analysis aggregate failed work across all observed attempts for the stage.
 
+`completedTasks` counts selected successful logical tasks even when launch or finish timestamps are absent.
+Duration summary fields and `taskDurationMillis` include only successful tasks with usable duration samples.
+A stage with an incomplete duration distribution is excluded from duration-based detectors.
+A stage discovered only through task events is still emitted, with nullable stage metadata and no inferred
+terminal completion state.
+
 The following stage fields are always non-null integers:
 
 - `completedTasks`
@@ -220,11 +226,15 @@ Start with the terminal summary:
 - `Issues detected` tells you how many bottlenecks were found.
 - `Severity summary` shows how many detected issues are high, medium, or low severity.
 - `Recommendations` tells you how many actions SparkDoctor generated.
-- `Top bottlenecks` shows the first few issues with severity and stage ID.
+- `Top bottlenecks` shows up to three issues with high-severity findings first. Stage findings show their stage ID, SQL findings show their SQL execution ID, and other application-level findings show application scope.
 
 Then open `recommendations.md` for stage hotspots, bottleneck evidence, and a readable explanation.
 
 Open `sql-executions.md` when SQL executions are present and you want operator summaries plus the full physical plan text without JSON escaping. The operator summary starts with grouped counts for common plan features such as Exchanges, Sorts, HashAggregates, Joins, Scans, and AQE nodes, then keeps detailed Spark operator counts below that. When SparkDoctor finds repeated physical plan subtrees, the SQL report also includes a `Repeated Subtrees` section with duplicate counts, subtree size, depth, contained operators, and interesting operators.
+
+Failed SQL executions include their Spark error message in a fenced `Error` section when the event log
+provides one. SQL details, errors, and plan text use fences that are longer than any backtick run in the
+source value so event-log text cannot prematurely close its Markdown block.
 
 Open `sql-execution-<id>.dot` with a Graphviz-compatible viewer when structured SQL plan data is present. DOT labels include Spark SQL operator names, DOT node IDs, shortened simple plan strings, and compact metric labels. Metric values are included when Spark exposes matching SQL accumulator values in the event log.
 
