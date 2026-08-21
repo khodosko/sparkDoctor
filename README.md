@@ -161,6 +161,12 @@ For output files, `analysis.json` examples, SQL plan output, and report interpre
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 
+## SparkDoctor For Teams
+
+The open-source SparkDoctor CLI is designed for local, single-run analysis. If you are interested in
+using SparkDoctor with a team or exploring additional commercial capabilities, visit
+[sparkdoctor.dev](https://sparkdoctor.dev/).
+
 ## Feedback And Real Event Logs
 
 SparkDoctor is early-stage. If it does not work on your event log, misses a real issue, or reports something incorrect, please open a GitHub issue or email `dkhodosko@gmail.com`.
